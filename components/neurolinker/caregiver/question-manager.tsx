@@ -12,6 +12,9 @@ import { Plus, Trash2, CheckCircle2, XCircle } from "lucide-react"
 import { trueFalseQuestions as initialQuestions, type TrueFalseQuestion, type PatientSummary } from "@/lib/neurolinker-data"
 
 export function QuestionManager({ patient }: { patient?: PatientSummary }) {
+  // Para integrar com Supabase: carregue o estado inicial com `fetchPerguntasJogo(patient.id)`
+  // e chame `addPerguntaJogo(dados)` dentro de handleAdd no lugar de atualizar o estado local
+  // (ver lib/supabase.ts).
   const [questions, setQuestions] = useState<TrueFalseQuestion[]>(initialQuestions)
   const [newQuestion, setNewQuestion] = useState("")
   const [newCategory, setNewCategory] = useState("")

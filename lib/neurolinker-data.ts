@@ -1,3 +1,9 @@
+// NOTA: Este arquivo contém dados mocados para prototipagem.
+// Ao integrar com Supabase (ver lib/supabase.ts), substitua:
+//   - `patients` pelo resultado de `fetchPacientes()`
+//   - `patientReports` por dados agregados vindos das tabelas `partidas_jogo` e `acessos_baul`
+//   - `familyMembers`, `lifeTimeline`, `trueFalseQuestions` por `fetchMemorias(pacienteId)` / `fetchPerguntasJogo(pacienteId)`
+
 export type EngagementLevel = "Alto" | "Médio" | "Baixo"
 
 export interface PatientSummary {
@@ -121,6 +127,115 @@ export const lifeTimeline: TimelineEntry[] = [
     photoUrl: "/images/timeline-1980.png",
   },
 ]
+
+export interface WeeklyEngagementPoint {
+  day: string
+  acessos: number
+}
+
+export interface ActivityLogEntry {
+  id: string
+  description: string
+  timestamp: string
+}
+
+export interface PatientReport {
+  memoryGameAccuracy: number
+  totalGamesPlayed: number
+  weeklyEngagement: WeeklyEngagementPoint[]
+  activityHistory: ActivityLogEntry[]
+}
+
+const defaultWeeklyEngagement: WeeklyEngagementPoint[] = [
+  { day: "Seg", acessos: 0 },
+  { day: "Ter", acessos: 0 },
+  { day: "Qua", acessos: 0 },
+  { day: "Qui", acessos: 0 },
+  { day: "Sex", acessos: 0 },
+  { day: "Sáb", acessos: 0 },
+  { day: "Dom", acessos: 0 },
+]
+
+export const patientReports: Record<string, PatientReport> = {
+  "1": {
+    memoryGameAccuracy: 86,
+    totalGamesPlayed: 42,
+    weeklyEngagement: [
+      { day: "Seg", acessos: 3 },
+      { day: "Ter", acessos: 4 },
+      { day: "Qua", acessos: 2 },
+      { day: "Qui", acessos: 5 },
+      { day: "Sex", acessos: 4 },
+      { day: "Sáb", acessos: 6 },
+      { day: "Dom", acessos: 3 },
+    ],
+    activityHistory: [
+      { id: "a1", description: "Ouviu a memória \"Casamento em 1975\"", timestamp: "Hoje às 09:30" },
+      { id: "a2", description: "Jogou o Jogo da Memória e acertou 4 de 5 perguntas", timestamp: "Hoje às 09:12" },
+      { id: "a3", description: "Visualizou a linha do tempo \"Anos 60\"", timestamp: "Ontem às 18:45" },
+      { id: "a4", description: "Reconheceu corretamente Maria em \"Quem é Quem\"", timestamp: "Ontem às 18:30" },
+    ],
+  },
+  "2": {
+    memoryGameAccuracy: 62,
+    totalGamesPlayed: 18,
+    weeklyEngagement: [
+      { day: "Seg", acessos: 1 },
+      { day: "Ter", acessos: 2 },
+      { day: "Qua", acessos: 1 },
+      { day: "Qui", acessos: 0 },
+      { day: "Sex", acessos: 2 },
+      { day: "Sáb", acessos: 1 },
+      { day: "Dom", acessos: 2 },
+    ],
+    activityHistory: [
+      { id: "a1", description: "Jogou o Jogo da Memória e acertou 3 de 5 perguntas", timestamp: "Ontem às 18:12" },
+      { id: "a2", description: "Ouviu a memória do dia", timestamp: "Ontem às 18:05" },
+    ],
+  },
+  "3": {
+    memoryGameAccuracy: 28,
+    totalGamesPlayed: 6,
+    weeklyEngagement: [
+      { day: "Seg", acessos: 0 },
+      { day: "Ter", acessos: 0 },
+      { day: "Qua", acessos: 1 },
+      { day: "Qui", acessos: 0 },
+      { day: "Sex", acessos: 0 },
+      { day: "Sáb", acessos: 0 },
+      { day: "Dom", acessos: 0 },
+    ],
+    activityHistory: [{ id: "a1", description: "Acessou o Baú de Memórias", timestamp: "3 dias atrás às 14:20" }],
+  },
+  "4": {
+    memoryGameAccuracy: 91,
+    totalGamesPlayed: 37,
+    weeklyEngagement: [
+      { day: "Seg", acessos: 4 },
+      { day: "Ter", acessos: 5 },
+      { day: "Qua", acessos: 5 },
+      { day: "Qui", acessos: 6 },
+      { day: "Sex", acessos: 4 },
+      { day: "Sáb", acessos: 3 },
+      { day: "Dom", acessos: 5 },
+    ],
+    activityHistory: [
+      { id: "a1", description: "Jogou o Jogo da Memória e acertou 5 de 5 perguntas", timestamp: "Hoje às 07:55" },
+      { id: "a2", description: "Reconheceu toda a família em \"Quem é Quem\"", timestamp: "Hoje às 07:40" },
+    ],
+  },
+}
+
+export function getPatientReport(patientId: string): PatientReport {
+  return (
+    patientReports[patientId] ?? {
+      memoryGameAccuracy: 0,
+      totalGamesPlayed: 0,
+      weeklyEngagement: defaultWeeklyEngagement,
+      activityHistory: [],
+    }
+  )
+}
 
 export const trueFalseQuestions: TrueFalseQuestion[] = [
   {

@@ -32,7 +32,7 @@ export function AppShell() {
       </header>
       {screen === "login" && <LoginScreen onSelectRole={(role) => setScreen(role)} />}
       {screen === "caregiver" && <CaregiverDashboard patients={patients} activePatient={activePatient} onSelectPatient={setActivePatientId} onAddPatient={handleAddPatient} />}
-      {screen === "patient" && <PatientChest patients={patients} activePatient={activePatient} onSelectPatient={setActivePatientId} />}
+      {screen === "patient" && <PatientChest patient={activePatient} />}
     </div>
   )
 }

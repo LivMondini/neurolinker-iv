@@ -5,9 +5,9 @@ import { CaregiverSidebar, type CaregiverSection } from "./caregiver-sidebar"
 import { PatientsTable } from "./patients-table"
 import { MemoryManager } from "./memory-manager"
 import { QuestionManager } from "./question-manager"
+import { PatientReports } from "./patient-reports"
 import { Card, CardContent } from "@/components/ui/card"
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
-import { Users, Activity, Image as ImageIcon, TrendingUp, FileBarChart, UserRound } from "lucide-react"
+import { Users, Activity, Image as ImageIcon, TrendingUp } from "lucide-react"
 import type { PatientSummary } from "@/lib/neurolinker-data"
 
 interface Props { patients: PatientSummary[]; activePatient?: PatientSummary; onSelectPatient: (id: string) => void; onAddPatient: (patient: PatientSummary) => void }
@@ -32,7 +32,7 @@ export function CaregiverDashboard({ patients, activePatient, onSelectPatient, o
         {section === "patients" && <><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">{stats.map((stat) => <Card key={stat.label}><CardContent className="flex items-center gap-4 p-5"><div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#0284c7]/10 text-[#0284c7]"><stat.icon className="size-5" /></div><div><p className="text-2xl font-semibold leading-tight text-[#0f172a]">{stat.value}</p><p className="text-xs text-muted-foreground">{stat.label}</p></div></CardContent></Card>)}</div><PatientsTable patients={patients} activePatientId={active?.id} onSelectPatient={onSelectPatient} onAddPatient={onAddPatient} /></>}
         {section === "memories" && <MemoryManager patient={active} />}
         {section === "games" && <QuestionManager patient={active} />}
-        {section === "reports" && <Empty className="rounded-xl border border-dashed"><EmptyHeader><EmptyMedia variant="icon"><FileBarChart /></EmptyMedia><EmptyTitle>Relatórios em construção</EmptyTitle><EmptyDescription>Relatórios detalhados de evolução cognitiva estarão disponíveis em breve nesta área.</EmptyDescription></EmptyHeader></Empty>}
+        {section === "reports" && <PatientReports patient={active} />}
       </div>
     </main>
   </div>

@@ -12,6 +12,9 @@ const mediaItems = [
 ]
 
 export function MemoryManager({ patient }: { patient?: PatientSummary }) {
+  // Para integrar com Supabase: substitua `mediaItems` pelo resultado de
+  // `fetchMemorias(patient.id)` e use `uploadMemoria(dados)` nos botões de envio acima
+  // (ver lib/supabase.ts).
   return (
     <Card>
       <CardHeader>
