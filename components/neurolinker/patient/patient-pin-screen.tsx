@@ -31,17 +31,9 @@ export function PatientPinScreen({ patient, onSuccess }: { patient: PatientSumma
     <main className="flex min-h-[calc(100vh-56px)] items-center justify-center bg-[#fbf3e7] px-5 py-10">
       <section className="w-full max-w-lg rounded-3xl border-2 border-amber-200 bg-white p-6 text-center shadow-lg sm:p-10">
         <h1 className="text-4xl font-bold text-[#2d2a26] sm:text-5xl">Bem-vindo(a)!</h1>
-        <p className="mt-3 text-xl text-slate-700">Digite seu código de 6 números para acessar sua conta.</p>
-        <div aria-label={`${digits.length} de 6 dígitos preenchidos`} aria-live="polite" className="mx-auto my-7 flex max-w-md justify-center gap-2 rounded-2xl bg-amber-50 px-3 py-5 sm:gap-3 sm:px-4">
-          {Array.from({ length: 6 }, (_, index) => {
-            const digit = digits[index]
-            return (
-              <span key={index} className={`flex size-11 items-center justify-center rounded-xl border-2 bg-white text-3xl font-bold leading-none sm:size-14 sm:text-4xl ${digit ? "border-slate-700 text-slate-900" : "border-slate-300 text-slate-300"}`}>
-                {digit || <span aria-hidden="true">—</span>}
-                <span className="sr-only">{digit ? `Número ${digit}` : "Vazio"}</span>
-              </span>
-            )
-          })}
+        <p className="mt-3 text-xl text-slate-700">Digite seu código de 6 números para acessar seu baú.</p>
+        <div aria-label={`${digits.length} de 6 dígitos preenchidos`} aria-live="polite" className="mx-auto my-7 flex max-w-xs justify-center gap-3 rounded-2xl bg-amber-50 px-4 py-5">
+          {Array.from({ length: 6 }, (_, index) => <span key={index} className={`flex size-8 items-center justify-center rounded-full border-2 ${index < digits.length ? "border-slate-900 bg-slate-900" : "border-slate-400 bg-transparent"}`}><span className="sr-only">{index < digits.length ? "Preenchido" : "Vazio"}</span></span>)}
         </div>
         {showMessage && <p role="status" className="mb-5 rounded-xl bg-amber-50 p-4 text-lg leading-relaxed text-amber-900">Puxa, parece que os números ficaram diferentes. Não se preocupe, vamos tentar de novo?</p>}
         <div ref={keypadRef} tabIndex={-1} className="mx-auto grid max-w-xs grid-cols-3 gap-3 outline-none" aria-label="Teclado numérico">
