@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ImagePlus, Mic, FileText, Image as ImageIcon } from "lucide-react"
+import type { PatientSummary } from "@/lib/neurolinker-data"
 
 const mediaItems = [
   { type: "photo", label: "Casamento - 1975", src: "/images/timeline-1970.png" },
@@ -10,13 +11,13 @@ const mediaItems = [
   { type: "photo", label: "Aniversário em família", src: "/images/timeline-1980.png" },
 ]
 
-export function MemoryManager() {
+export function MemoryManager({ patient }: { patient?: PatientSummary }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Gerenciador de Memórias</CardTitle>
         <CardDescription>
-          Central de mídia para fotos de família, trechos de áudio e relatos de vida do paciente.
+          Cadastrando memórias para: <strong className="text-foreground">{patient?.name ?? "Nenhum paciente selecionado"}</strong>. Central de mídia para fotos de família, trechos de áudio e relatos de vida.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">

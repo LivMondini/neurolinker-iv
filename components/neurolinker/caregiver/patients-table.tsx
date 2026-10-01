@@ -1,80 +1,26 @@
 "use client"
 
+import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { patients, type EngagementLevel } from "@/lib/neurolinker-data"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { UserRound, Plus } from "lucide-react"
+import type { EngagementLevel, PatientSummary } from "@/lib/neurolinker-data"
 
-const engagementVariant: Record<EngagementLevel, "default" | "secondary" | "outline"> = {
-  Alto: "default",
-  Médio: "secondary",
-  Baixo: "outline",
-}
+const engagementVariant: Record<EngagementLevel, "default" | "secondary" | "outline"> = { Alto: "default", Médio: "secondary", Baixo: "outline" }
+interface Props { patients: PatientSummary[]; activePatientId?: string; onSelectPatient: (id: string) => void; onAddPatient: (patient: PatientSummary) => void }
 
-export function PatientsTable() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Pacientes recentes</CardTitle>
-        <CardDescription>Acompanhe o status e o engajamento diário de cada paciente.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Paciente</TableHead>
-              <TableHead>Estágio</TableHead>
-              <TableHead>Última atividade</TableHead>
-              <TableHead>Engajamento</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {patients.map((patient) => (
-              <TableRow key={patient.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="size-9">
-                      <AvatarImage src={patient.avatarUrl || "/placeholder.svg"} alt={patient.name} />
-                      <AvatarFallback>
-                        {patient.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-foreground">{patient.name}</p>
-                      <p className="text-xs text-muted-foreground">{patient.age} anos</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{patient.stage}</TableCell>
-                <TableCell className="text-muted-foreground">{patient.lastActivity}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Progress value={patient.engagementScore} className="h-2 w-20" />
-                    <Badge variant={engagementVariant[patient.engagement]}>{patient.engagement}</Badge>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={patient.status === "Ativo" ? "default" : "secondary"}>{patient.status}</Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  )
+export function PatientsTable({ patients, activePatientId, onSelectPatient, onAddPatient }: Props) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(""); const [age, setAge] = useState(""); const [stage, setStage] = useState("Inicial"); const [avatarUrl, setAvatarUrl] = useState("")
+  function handleSubmit(event: React.FormEvent) { event.preventDefault(); if (!name.trim() || !age) return; const patient: PatientSummary = { id: `patient-${Date.now()}`, name: name.trim(), age: Number(age), stage: `Estágio ${stage}`, avatarUrl: avatarUrl || "/placeholder-user.jpg", lastActivity: "Ainda sem atividade", engagement: "Médio", engagementScore: 0, status: "Ativo" }; onAddPatient(patient); onSelectPatient(patient.id); setOpen(false); setName(""); setAge(""); setStage("Inicial"); setAvatarUrl("") }
+  return <Card><CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><CardTitle>Pacientes recentes</CardTitle><CardDescription>Acompanhe e gerencie o status e o engajamento diário de cada paciente.</CardDescription></div><Button onClick={() => setOpen(true)} className="bg-[#0284c7] hover:bg-[#0284c7]/90"><Plus data-icon="inline-start" />Cadastrar novo paciente</Button></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Paciente</TableHead><TableHead>Estágio</TableHead><TableHead>Última atividade</TableHead><TableHead>Engajamento</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader><TableBody>{patients.map((patient) => <TableRow key={patient.id} className={patient.id === activePatientId ? "bg-[#0284c7]/5" : ""}><TableCell><div className="flex items-center gap-3"><Avatar className="size-9"><AvatarImage src={patient.avatarUrl} alt={patient.name} /><AvatarFallback>{patient.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}</AvatarFallback></Avatar><div><p className="font-medium text-foreground">{patient.name}</p><p className="text-xs text-muted-foreground">{patient.age} anos</p></div></div></TableCell><TableCell className="text-muted-foreground">{patient.stage}</TableCell><TableCell className="text-muted-foreground">{patient.lastActivity}</TableCell><TableCell><div className="flex items-center gap-2"><Progress value={patient.engagementScore} className="h-2 w-20" /><Badge variant={engagementVariant[patient.engagement]}>{patient.engagement}</Badge></div></TableCell><TableCell><Badge variant={patient.status === "Ativo" ? "default" : "secondary"}>{patient.status}</Badge></TableCell><TableCell className="text-right"><Button variant={patient.id === activePatientId ? "secondary" : "outline"} size="sm" onClick={() => onSelectPatient(patient.id)}>{patient.id === activePatientId ? "Paciente ativo" : "Gerenciar"}</Button></TableCell></TableRow>)}</TableBody></Table></CardContent>
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Cadastrar novo paciente</DialogTitle><DialogDescription>Adicione os dados básicos para criar um novo Baú do Paciente.</DialogDescription></DialogHeader><form onSubmit={handleSubmit}><FieldGroup className="gap-4"><Field><FieldLabel htmlFor="patient-name">Nome completo</FieldLabel><Input id="patient-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Rosa Pereira" required /></Field><div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><Field><FieldLabel htmlFor="patient-age">Idade</FieldLabel><Input id="patient-age" type="number" min="1" max="120" value={age} onChange={(e) => setAge(e.target.value)} placeholder="78" required /></Field><Field><FieldLabel htmlFor="patient-stage">Estágio da doença</FieldLabel><select id="patient-stage" value={stage} onChange={(e) => setStage(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option>Inicial</option><option>Moderado</option><option>Avançado</option></select></Field></div><Field><FieldLabel htmlFor="patient-avatar">Foto ou avatar (URL opcional)</FieldLabel><Input id="patient-avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." /></Field></FieldGroup><DialogFooter className="mt-6"><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button type="submit" className="bg-[#0284c7] hover:bg-[#0284c7]/90"><UserRound data-icon="inline-start" />Criar paciente</Button></DialogFooter></form></DialogContent></Dialog>
+  </Card>
 }

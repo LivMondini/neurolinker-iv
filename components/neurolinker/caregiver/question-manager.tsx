@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Plus, Trash2, CheckCircle2, XCircle } from "lucide-react"
-import { trueFalseQuestions as initialQuestions, type TrueFalseQuestion } from "@/lib/neurolinker-data"
+import { trueFalseQuestions as initialQuestions, type TrueFalseQuestion, type PatientSummary } from "@/lib/neurolinker-data"
 
-export function QuestionManager() {
+export function QuestionManager({ patient }: { patient?: PatientSummary }) {
   const [questions, setQuestions] = useState<TrueFalseQuestion[]>(initialQuestions)
   const [newQuestion, setNewQuestion] = useState("")
   const [newCategory, setNewCategory] = useState("")
@@ -40,7 +40,7 @@ export function QuestionManager() {
       <CardHeader>
         <CardTitle>Gerenciador do Jogo da Memória</CardTitle>
         <CardDescription>
-          Cadastre perguntas de Verdadeiro/Falso sobre a vida do idoso para alimentar o jogo no Baú do Paciente.
+          Cadastrando jogos para: <strong className="text-foreground">{patient?.name ?? "Nenhum paciente selecionado"}</strong>. Cadastre perguntas de Verdadeiro/Falso sobre a vida do idoso para alimentar o jogo no Baú do Paciente.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
