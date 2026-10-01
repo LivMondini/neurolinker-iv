@@ -32,7 +32,7 @@ export function AppShell() {
         {screen !== "login" && <Button variant="ghost" size="sm" onClick={() => setScreen("login")} className="gap-1.5 text-muted-foreground"><LogOut className="size-4" data-icon="inline-start" />Sair</Button>}
       </header>
       {screen === "login" && <LoginScreen onSelectRole={(role) => setScreen(role === "patient" ? "patient-pin" : "caregiver")} />}
-      {screen === "caregiver" && <CaregiverDashboard patients={patients} activePatient={activePatient} onSelectPatient={setActivePatientId} onAddPatient={handleAddPatient} />}
+      {screen === "caregiver" && <CaregiverDashboard patients={patients} activePatient={activePatient} onSelectPatient={setActivePatientId} onAddPatient={handleAddPatient} onAccessPatient={(id) => { setActivePatientId(id); setScreen("patient") }} />}
       {screen === "patient-pin" && activePatient && <PatientPinScreen patient={activePatient} onSuccess={() => setScreen("patient")} />}
       {screen === "patient" && <PatientChest patient={activePatient} />}
     </div>
