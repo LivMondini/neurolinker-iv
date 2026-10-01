@@ -10,6 +10,7 @@ export interface PatientSummary {
   id: string
   name: string
   age: number
+  pin: string
   stage: string
   avatarUrl: string
   lastActivity: string
@@ -44,6 +45,7 @@ export const patients: PatientSummary[] = [
     id: "1",
     name: "João Silva",
     age: 78,
+    pin: "123456",
     stage: "Estágio Moderado",
     avatarUrl: "/images/seu-joao-avatar.png",
     lastActivity: "Hoje, 09:40",
@@ -55,6 +57,7 @@ export const patients: PatientSummary[] = [
     id: "2",
     name: "Rosa Pereira",
     age: 82,
+    pin: "234567",
     stage: "Estágio Inicial",
     avatarUrl: "/placeholder-user.jpg",
     lastActivity: "Ontem, 18:12",
@@ -66,6 +69,7 @@ export const patients: PatientSummary[] = [
     id: "3",
     name: "Antônio Souza",
     age: 85,
+    pin: "345678",
     stage: "Estágio Avançado",
     avatarUrl: "/placeholder-user.jpg",
     lastActivity: "3 dias atrás",
@@ -77,6 +81,7 @@ export const patients: PatientSummary[] = [
     id: "4",
     name: "Helena Martins",
     age: 74,
+    pin: "456789",
     stage: "Estágio Inicial",
     avatarUrl: "/placeholder-user.jpg",
     lastActivity: "Hoje, 07:55",

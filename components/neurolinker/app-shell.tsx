@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 import { LoginScreen } from "./login-screen"
 import { CaregiverDashboard } from "./caregiver/caregiver-dashboard"
 import { PatientChest } from "./patient/patient-chest"
+import { PatientPinScreen } from "./patient/patient-pin-screen"
 import { patients as initialPatients, type PatientSummary } from "@/lib/neurolinker-data"
 
-type Screen = "login" | "caregiver" | "patient"
+type Screen = "login" | "caregiver" | "patient-pin" | "patient"
 
 export function AppShell() {
   const [screen, setScreen] = useState<Screen>("login")
@@ -30,8 +31,9 @@ export function AppShell() {
         </div>
         {screen !== "login" && <Button variant="ghost" size="sm" onClick={() => setScreen("login")} className="gap-1.5 text-muted-foreground"><LogOut className="size-4" data-icon="inline-start" />Sair</Button>}
       </header>
-      {screen === "login" && <LoginScreen onSelectRole={(role) => setScreen(role)} />}
+      {screen === "login" && <LoginScreen onSelectRole={(role) => setScreen(role === "patient" ? "patient-pin" : "caregiver")} />}
       {screen === "caregiver" && <CaregiverDashboard patients={patients} activePatient={activePatient} onSelectPatient={setActivePatientId} onAddPatient={handleAddPatient} />}
+      {screen === "patient-pin" && activePatient && <PatientPinScreen patient={activePatient} onSuccess={() => setScreen("patient")} />}
       {screen === "patient" && <PatientChest patient={activePatient} />}
     </div>
   )

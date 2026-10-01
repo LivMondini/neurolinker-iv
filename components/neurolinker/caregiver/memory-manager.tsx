@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ImagePlus, Mic, FileText, Image as ImageIcon } from "lucide-react"
@@ -12,6 +13,8 @@ const mediaItems = [
 ]
 
 export function MemoryManager({ patient }: { patient?: PatientSummary }) {
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const audioInputRef = useRef<HTMLInputElement>(null)
   // Para integrar com Supabase: substitua `mediaItems` pelo resultado de
   // `fetchMemorias(patient.id)` e use `uploadMemoria(dados)` nos botões de envio acima
   // (ver lib/supabase.ts).
@@ -24,12 +27,14 @@ export function MemoryManager({ patient }: { patient?: PatientSummary }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
+        <input ref={photoInputRef} type="file" accept="image/*" className="sr-only" aria-label="Selecionar foto" />
+        <input ref={audioInputRef} type="file" accept="audio/*" className="sr-only" aria-label="Selecionar áudio" />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Button variant="outline" className="h-24 flex-col gap-2 bg-[#0284c7]/5 hover:bg-[#0284c7]/10">
+          <Button onClick={() => photoInputRef.current?.click()} variant="outline" className="h-24 flex-col gap-2 bg-[#0284c7]/5 hover:bg-[#0284c7]/10">
             <ImagePlus className="size-5 text-[#0284c7]" data-icon="inline-start" />
             Enviar foto
           </Button>
-          <Button variant="outline" className="h-24 flex-col gap-2 bg-[#0284c7]/5 hover:bg-[#0284c7]/10">
+          <Button onClick={() => audioInputRef.current?.click()} variant="outline" className="h-24 flex-col gap-2 bg-[#0284c7]/5 hover:bg-[#0284c7]/10">
             <Mic className="size-5 text-[#0284c7]" data-icon="inline-start" />
             Gravar áudio
           </Button>

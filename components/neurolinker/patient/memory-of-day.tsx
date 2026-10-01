@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Play, Pause, Sparkles } from "lucide-react"
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 
 export function MemoryOfDay() {
   const [playing, setPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   return (
     <Card className="overflow-hidden rounded-3xl border-2 border-amber-200 bg-white p-0">
@@ -28,10 +29,11 @@ export function MemoryOfDay() {
             Este é o dia do seu casamento com Maria, em 1975. Vocês escolheram uma pequena capela perto da casa dos
             seus pais para celebrar esse momento especial.
           </p>
+          <audio ref={audioRef} src="/audio/memoria-do-dia.mp3" preload="none" onEnded={() => setPlaying(false)} className="sr-only" />
           <div className="flex items-center gap-4">
             <Button
               size="lg"
-              onClick={() => setPlaying((p) => !p)}
+              onClick={() => { if (playing) audioRef.current?.pause(); else void audioRef.current?.play(); setPlaying((p) => !p) }}
               className="h-14 gap-2 rounded-2xl bg-amber-600 px-6 text-base font-semibold hover:bg-amber-700"
             >
               {playing ? <Pause className="size-5" /> : <Play className="size-5" />}
