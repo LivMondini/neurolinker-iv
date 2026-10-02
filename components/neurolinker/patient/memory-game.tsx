@@ -39,12 +39,12 @@ export function MemoryGame() {
   }
 
   return (
-    <Card className="flex flex-col gap-6 rounded-3xl border-2 border-emerald-200 bg-white p-6 sm:p-8">
+    <Card className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-md sm:p-8">
       <div className="flex items-center gap-3">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
           <Gamepad2 className="size-6" />
         </div>
-        <h2 className="text-2xl font-semibold text-[#2d2a26]">Jogo da Memória</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Jogo da Memória</h2>
       </div>
 
       {!finished ? (
@@ -52,7 +52,7 @@ export function MemoryGame() {
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
             Pergunta {index + 1} de {trueFalseQuestions.length}
           </p>
-          <p className="text-xl font-medium leading-relaxed text-[#2d2a26] sm:text-2xl">{current.question}</p>
+          <p className="text-xl font-medium leading-relaxed text-slate-800 sm:text-2xl">{current.question}</p>
 
           {feedback ? (
             <div
@@ -69,7 +69,7 @@ export function MemoryGame() {
               <Button
                 size="lg"
                 onClick={() => handleAnswer(true)}
-                className="h-16 flex-1 rounded-2xl bg-emerald-600 text-lg font-semibold hover:bg-emerald-700"
+                className="h-14 flex-1 rounded-xl bg-emerald-600 text-lg font-bold text-white hover:bg-emerald-700"
               >
                 <Check className="size-6" data-icon="inline-start" />
                 Verdadeiro
@@ -78,7 +78,7 @@ export function MemoryGame() {
                 size="lg"
                 onClick={() => handleAnswer(false)}
                 variant="outline"
-                className="h-16 flex-1 rounded-2xl border-2 border-rose-300 text-lg font-semibold text-rose-700 hover:bg-rose-50"
+                className="h-14 flex-1 rounded-xl border border-rose-300 bg-rose-50 text-lg font-bold text-rose-800 hover:bg-rose-100"
               >
                 <X className="size-6" data-icon="inline-start" />
                 Falso
@@ -88,11 +88,11 @@ export function MemoryGame() {
         </div>
       ) : (
         <div className="flex flex-col items-center gap-4 py-4 text-center">
-          <div className="flex size-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+          <div className="flex size-16 items-center justify-center rounded-full bg-blue-100 text-blue-800">
             <PartyPopper className="size-8" />
           </div>
-          <p className="text-xl font-semibold text-[#2d2a26]">Você terminou o jogo!</p>
-          <p className="text-muted-foreground">
+          <p className="text-xl font-bold text-slate-900">Você terminou o jogo!</p>
+          <p className="text-lg text-slate-700">
             Você acertou {score} de {trueFalseQuestions.length} perguntas.
           </p>
           <Button
