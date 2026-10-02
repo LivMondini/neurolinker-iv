@@ -34,7 +34,7 @@ export function PatientPinScreen({ patient, onSuccess }: { patient: PatientSumma
       <section className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-xl sm:p-12">
         <div className="mx-auto max-w-md">
           <h1 className="text-[30px] font-bold text-slate-900 sm:text-4xl">Bem-vindo(a)!</h1>
-          <p className="mt-4 text-lg leading-relaxed text-slate-600">Digite seu código de 6 números para acessar seu baú.</p>
+          <p className="mt-4 text-lg leading-relaxed text-slate-600">Digite seu código de 6 números para acessar sua conta.</p>
 
           <label htmlFor="patient-pin" className="sr-only">Código de 6 números</label>
           <input
@@ -78,14 +78,36 @@ export function PatientPinScreen({ patient, onSuccess }: { patient: PatientSumma
 
           {showMessage && <p role="status" className="mb-5 rounded-xl bg-amber-50 p-4 text-lg leading-relaxed text-amber-900">Puxa, parece que os números ficaram diferentes. Não se preocupe, vamos tentar de novo?</p>}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Button type="button" onClick={clearPin} variant="outline" className="h-12 rounded-xl border border-slate-300 bg-slate-100 text-base font-medium text-slate-800 hover:bg-slate-200">
+          <div className="mx-auto grid max-w-sm grid-cols-3 gap-3" aria-label="Teclado numérico">
+            {Array.from({ length: 9 }, (_, index) => {
+              const number = String(index + 1)
+              return (
+                <Button
+                  key={number}
+                  type="button"
+                  onClick={() => handleChange(`${digits}${number}`)}
+                  disabled={digits.length === 6}
+                  className="h-16 rounded-xl border border-slate-200 bg-slate-100 text-xl font-bold text-slate-900 shadow-none hover:bg-slate-200 active:bg-blue-100"
+                  aria-label={`Número ${number}`}
+                >
+                  {number}
+                </Button>
+              )
+            })}
+            <Button type="button" onClick={clearPin} variant="outline" className="h-16 rounded-xl border border-slate-200 bg-slate-100 text-base font-bold text-slate-900 hover:bg-slate-200 active:bg-blue-100">
+              Limpar
+            </Button>
+            <Button type="button" onClick={() => handleChange(`${digits}0`)} disabled={digits.length === 6} className="h-16 rounded-xl border border-slate-200 bg-slate-100 text-xl font-bold text-slate-900 shadow-none hover:bg-slate-200 active:bg-blue-100" aria-label="Número zero">
+              0
+            </Button>
+            <Button type="button" onClick={() => handleChange(digits.slice(0, -1))} disabled={!digits.length} variant="outline" className="h-16 rounded-xl border border-slate-200 bg-slate-100 text-base font-bold text-slate-900 hover:bg-slate-200 active:bg-blue-100">
               <Delete data-icon="inline-start" />Apagar
             </Button>
-            <Button type="button" disabled={digits.length !== 6} onClick={submit} className="h-12 rounded-xl bg-blue-600 text-base font-semibold text-white shadow-md hover:bg-blue-700">
-              Acessar a conta
-            </Button>
           </div>
+
+          <Button type="button" disabled={digits.length !== 6} onClick={submit} className="mt-4 h-14 w-full rounded-xl bg-blue-600 text-lg font-semibold text-white shadow-md hover:bg-blue-700">
+            Acessar a conta
+          </Button>
         </div>
       </section>
     </main>
