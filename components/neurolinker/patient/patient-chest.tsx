@@ -1,6 +1,5 @@
 "use client"
 
-import { Heart } from "lucide-react"
 import type { PatientSummary } from "@/lib/neurolinker-data"
 import { MemoryOfDay } from "./memory-of-day"
 import { WhoIsWho } from "./who-is-who"
@@ -19,10 +18,6 @@ export function PatientChest({ patient }: { patient?: PatientSummary }) {
             className="size-20 rounded-full border-4 border-white object-cover shadow-md"
           />
           <div>
-            <p className="flex items-center gap-2 text-base font-semibold text-slate-700">
-              <Heart className="size-4 fill-amber-500 text-amber-500" />
-              Bom dia
-            </p>
             <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">Olá, {firstName}!</h1>
           </div>
         </header>
