@@ -10,7 +10,7 @@ export interface PatientSummary {
   id: string
   name: string
   age: number
-  pin: string
+  pin?: string
   stage: string
   avatarUrl: string
   lastActivity: string
