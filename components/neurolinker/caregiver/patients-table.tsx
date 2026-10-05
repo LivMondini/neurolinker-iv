@@ -10,14 +10,50 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { UserRound, Plus, Search, KeyRound, ExternalLink, Loader2, RefreshCw } from "lucide-react"
+import { UserRound, Plus, Search, KeyRound, ExternalLink, Loader2, RefreshCw, Link2, Smartphone } from "lucide-react"
 import type { EngagementLevel, PatientSummary } from "@/lib/neurolinker-data"
-import { addPaciente, redefinirPin, rowToPatient } from "@/lib/supabase"
+import {
+  addPaciente,
+  redefinirPin,
+  gerarCodigoPareamento,
+  listarDispositivos,
+  revogarDispositivo,
+  rowToPatient,
+  type DispositivoRow,
+} from "@/lib/supabase"
 
 const engagementClassName: Record<EngagementLevel, string> = {
   Alto: "border-emerald-200 bg-emerald-100/60 text-emerald-800 hover:bg-emerald-100/60",
   Médio: "border-amber-200 bg-amber-100/60 text-amber-800 hover:bg-amber-100/60",
   Baixo: "border-rose-200 bg-rose-100/60 text-rose-800 hover:bg-rose-100/60",
+}
+
+// "Agora mesmo", "Há 5 min", "Hoje às 14:30", "Ontem às 09:10", "12 de out às 14:30"
+function formatarUltimaAtividade(valor: string | null | undefined): string {
+  if (!valor) return "Ainda sem atividade"
+  const data = new Date(valor)
+  if (Number.isNaN(data.getTime())) return valor // já veio em texto (ex.: "Ainda sem atividade")
+
+  const agora = new Date()
+  const diffMin = Math.floor((agora.getTime() - data.getTime()) / 60000)
+  if (diffMin < 1) return "Agora mesmo"
+  if (diffMin < 60) return `Há ${diffMin} min`
+
+  const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate())
+  const inicioOntem = new Date(inicioHoje)
+  inicioOntem.setDate(inicioOntem.getDate() - 1)
+
+  if (data >= inicioHoje) return `Hoje às ${hora}`
+  if (data >= inicioOntem) return `Ontem às ${hora}`
+
+  const dia = data.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "")
+  const ano = data.getFullYear() !== agora.getFullYear() ? ` de ${data.getFullYear()}` : ""
+  return `${dia}${ano} às ${hora}`
+}
+
+function formatarData(valor: string): string {
+  return new Date(valor).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
 
 interface Props {
@@ -49,6 +85,18 @@ export function PatientsTable({
   const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
   const [resetting, setResetting] = useState(false)
   const [resetError, setResetError] = useState("")
+  // Código de pareamento (primeiro acesso no aparelho do paciente)
+  const [pairTarget, setPairTarget] = useState<{ id: string; name: string } | null>(null)
+  const [pairCode, setPairCode] = useState<{ codigo: string; expiraEm: string } | null>(null)
+  const [pairing, setPairing] = useState(false)
+  const [pairError, setPairError] = useState("")
+  // Aparelhos vinculados (listar e revogar)
+  const [devTarget, setDevTarget] = useState<{ id: string; name: string } | null>(null)
+  const [devices, setDevices] = useState<DispositivoRow[]>([])
+  const [devLoading, setDevLoading] = useState(false)
+  const [devError, setDevError] = useState("")
+  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
 
   async function handleReset() {
     if (!resetTarget) return
@@ -63,6 +111,57 @@ export function PatientsTable({
       setResetError("Não foi possível gerar um novo PIN. Tente novamente.")
     } finally {
       setResetting(false)
+    }
+  }
+
+  async function handlePair(id: string, patientName: string) {
+    setPairTarget({ id, name: patientName })
+    setPairCode(null)
+    setPairError("")
+    setPairing(true)
+    try {
+      setPairCode(await gerarCodigoPareamento(id))
+    } catch (err: any) {
+      console.error("Erro ao gerar código:", err?.message, err?.code)
+      setPairError("Não foi possível gerar o código. Tente novamente.")
+    } finally {
+      setPairing(false)
+    }
+  }
+
+  async function carregarDispositivos(pacienteId: string) {
+    setDevLoading(true)
+    setDevError("")
+    try {
+      setDevices(await listarDispositivos(pacienteId))
+    } catch (err: any) {
+      console.error("Erro ao listar aparelhos:", err?.message, err?.code)
+      setDevError("Não foi possível carregar os aparelhos.")
+    } finally {
+      setDevLoading(false)
+    }
+  }
+
+  function handleOpenDevices(id: string, patientName: string) {
+    setDevTarget({ id, name: patientName })
+    setDevices([])
+    setConfirmRevokeId(null)
+    carregarDispositivos(id)
+  }
+
+  async function handleRevoke(dispositivoId: string) {
+    if (!devTarget) return
+    setRevokingId(dispositivoId)
+    setDevError("")
+    try {
+      await revogarDispositivo(dispositivoId)
+      setConfirmRevokeId(null)
+      await carregarDispositivos(devTarget.id)
+    } catch (err: any) {
+      console.error("Erro ao revogar aparelho:", err?.message, err?.code)
+      setDevError("Não foi possível revogar o aparelho. Tente novamente.")
+    } finally {
+      setRevokingId(null)
     }
   }
 
@@ -169,7 +268,7 @@ export function PatientsTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{patient.stage}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{patient.lastActivity}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{formatarUltimaAtividade(patient.lastActivity)}</TableCell>
                   <TableCell>
                     <div className="flex min-w-24 items-center gap-2">
                       <Progress value={patient.engagementScore} className="h-2" />
@@ -193,7 +292,7 @@ export function PatientsTable({
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                       <Button size="sm" variant="outline" onClick={() => onSelectPatient(patient.id)}>
                         Gerenciar
                       </Button>
@@ -207,6 +306,10 @@ export function PatientsTable({
                       >
                         <RefreshCw data-icon="inline-start" />
                         Novo PIN
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleOpenDevices(patient.id, patient.name)}>
+                        <Smartphone data-icon="inline-start" />
+                        Aparelhos
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => onAccessPatient(patient.id)}>
                         <ExternalLink data-icon="inline-start" />
@@ -314,6 +417,139 @@ export function PatientsTable({
               {resetting && <Loader2 className="mr-2 size-4 animate-spin" />}
               Gerar novo PIN
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Aparelhos vinculados */}
+      <Dialog open={devTarget !== null} onOpenChange={(value) => !revokingId && !value && setDevTarget(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Aparelhos de {devTarget?.name}</DialogTitle>
+            <DialogDescription>
+              Aparelhos que já foram pareados. Ao revogar um, ele deixa de acessar o baú e precisa ser pareado de novo.
+            </DialogDescription>
+          </DialogHeader>
+
+          {devLoading && (
+            <div className="flex justify-center py-6">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {!devLoading && devices.length === 0 && !devError && (
+            <p className="py-4 text-center text-sm text-muted-foreground">Nenhum aparelho pareado ainda.</p>
+          )}
+
+          {devices.length > 0 && (
+            <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+              {devices.map((d) => {
+                const revogado = Boolean(d.revoked_at)
+                return (
+                  <div
+                    key={d.id}
+                    className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${revogado ? "bg-slate-50 opacity-70" : ""}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{d.nome || "Aparelho sem nome"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Pareado em {formatarData(d.created_at)} ·{" "}
+                        {d.last_used_at ? `Último uso: ${formatarUltimaAtividade(d.last_used_at)}` : "ainda não usado"}
+                      </p>
+                    </div>
+
+                    {revogado ? (
+                      <Badge className="border-rose-200 bg-rose-100/60 text-rose-800 hover:bg-rose-100/60">
+                        Revogado
+                      </Badge>
+                    ) : confirmRevokeId === d.id ? (
+                      <div className="flex shrink-0 gap-2">
+                        <Button size="sm" variant="outline" disabled={revokingId === d.id} onClick={() => setConfirmRevokeId(null)}>
+                          Cancelar
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={revokingId === d.id}
+                          onClick={() => handleRevoke(d.id)}
+                          className="bg-red-600 hover:bg-red-600/90"
+                        >
+                          {revokingId === d.id && <Loader2 className="mr-2 size-4 animate-spin" />}
+                          Confirmar
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setConfirmRevokeId(d.id)}>
+                        Revogar
+                      </Button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {devError && <p className="text-sm font-medium text-red-600">{devError}</p>}
+
+          <DialogFooter>
+            <Button variant="outline" disabled={Boolean(revokingId)} onClick={() => setDevTarget(null)}>
+              Fechar
+            </Button>
+            <Button
+              onClick={() => {
+                const alvo = devTarget
+                setDevTarget(null)
+                if (alvo) handlePair(alvo.id, alvo.name)
+              }}
+              className="bg-[#0284c7] hover:bg-[#0284c7]/90"
+            >
+              <Link2 data-icon="inline-start" />
+              Parear novo aparelho
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Código de pareamento */}
+      <Dialog open={pairTarget !== null} onOpenChange={(value) => !pairing && !value && setPairTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Parear aparelho de {pairTarget?.name}</DialogTitle>
+            <DialogDescription>
+              Digite este código na tela &quot;Primeiro acesso&quot; do aparelho do paciente. Ele vale por 10 minutos e
+              só funciona uma vez. Depois disso, o paciente entra apenas com o PIN de 6 dígitos.
+            </DialogDescription>
+          </DialogHeader>
+
+          {pairing && (
+            <div className="flex justify-center py-6">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {pairCode && (
+            <div className="rounded-xl bg-sky-50 py-6 text-center">
+              <p className="font-mono text-4xl font-semibold tracking-[0.3em] text-sky-900">{pairCode.codigo}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Válido até{" "}
+                {new Date(pairCode.expiraEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            </div>
+          )}
+
+          {pairError && <p className="text-sm font-medium text-red-600">{pairError}</p>}
+
+          <DialogFooter>
+            <Button variant="outline" disabled={pairing} onClick={() => setPairTarget(null)}>
+              Fechar
+            </Button>
+            {pairError && (
+              <Button
+                onClick={() => pairTarget && handlePair(pairTarget.id, pairTarget.name)}
+                className="bg-[#0284c7] hover:bg-[#0284c7]/90"
+              >
+                Tentar de novo
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

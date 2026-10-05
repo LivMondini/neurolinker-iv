@@ -1,17 +1,35 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Brain, LogOut, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { LoginScreen } from "./login-screen"
 import { CaregiverDashboard } from "./caregiver/caregiver-dashboard"
 import { PatientChest } from "./patient/patient-chest"
-import { PatientPinScreen } from "./patient/patient-pin-screen"
+import { PatientAccessScreen } from "./patient/patient-access-screen"
+import { ResetPasswordScreen } from "./reset-password-screen"
 import type { PatientSummary } from "@/lib/neurolinker-data"
-import { supabase, fetchPacientes, rowToPatient } from "@/lib/supabase"
+import {
+  supabase,
+  fetchPacientes,
+  rowToPatient,
+  pacienteSair,
+  emRecuperacaoDeSenha,
+  encerrarRecuperacaoDeSenha,
+  type BaulData,
+} from "@/lib/supabase"
 
-type Screen = "login" | "caregiver" | "patient-pin" | "patient"
+// "patient-access": pareamento (1ª vez) + PIN — fluxo real do paciente, sem cuidador logado.
+// "patient": mostra o baú. Chega aqui de dois jeitos:
+//   - via patient-access (sessão restaurada ou PIN certo) -> baulAtivo preenchido com dados reais
+//   - via "Acessar conta" do cuidador (preview, sem PIN) -> activePatient (mock)
+// "reset-password": cuidador chegou pelo link do e-mail de "Esqueci minha senha".
+type Screen = "login" | "caregiver" | "patient-access" | "patient" | "reset-password"
+
+// Se false, o paciente não vê o botão "Sair": a sessão dura até 15 dias sem uso e só o
+// cuidador encerra o acesso (botão "Aparelhos" no painel). Mude para true para mostrar o Sair.
+const PACIENTE_PODE_SAIR = false
 
 export function AppShell() {
   const [screen, setScreen] = useState<Screen>("login")
@@ -19,6 +37,9 @@ export function AppShell() {
   const [patients, setPatients] = useState<PatientSummary[]>([])
   const [activePatientId, setActivePatientId] = useState("")
   const [loadError, setLoadError] = useState("")
+  const [baulAtivo, setBaulAtivo] = useState<BaulData | null>(null)
+  // Evita que o login automático do link de recuperação jogue o cuidador direto no painel.
+  const recoveringRef = useRef(false)
 
   const activePatient =
     patients.find((patient) => patient.id === activePatientId) ?? patients[0]
@@ -27,9 +48,12 @@ export function AppShell() {
   useEffect(() => {
     let active = true
 
+    // A detecção é feita em lib/supabase.ts, antes de o client limpar a URL.
+    if (emRecuperacaoDeSenha()) recoveringRef.current = true
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!active) return
-      if (session) setScreen("caregiver")
+      if (session) setScreen(recoveringRef.current || emRecuperacaoDeSenha() ? "reset-password" : "caregiver")
       setLoading(false)
     })
 
@@ -41,7 +65,13 @@ export function AppShell() {
         setActivePatientId("")
         setScreen("login")
       }
-      if (event === "SIGNED_IN" && session) {
+      if (event === "PASSWORD_RECOVERY") {
+        recoveringRef.current = true
+        setScreen("reset-password")
+        setLoading(false)
+        return
+      }
+      if (event === "SIGNED_IN" && session && !recoveringRef.current && !emRecuperacaoDeSenha()) {
         setScreen((current) => (current === "login" ? "caregiver" : current))
       }
     })
@@ -84,6 +114,13 @@ export function AppShell() {
     setScreen("login")
   }
 
+  // Saída da Área do Paciente (volta para a tela inicial de seleção).
+  async function handlePatientExit() {
+    await pacienteSair()
+    setBaulAtivo(null)
+    setScreen("login")
+  }
+
   // O paciente já foi gravado no banco pelo PatientsTable; aqui só atualiza a lista na tela.
   function handleAddPatient(patient: PatientSummary) {
     setPatients((current) => [patient, ...current])
@@ -100,11 +137,25 @@ export function AppShell() {
           <span className="font-semibold tracking-tight text-[#0f172a]">NeuroLinker</span>
         </div>
 
-        {!loading && screen !== "login" && (
+        {!loading && screen === "caregiver" && (
           <Button
             variant="ghost"
             size="sm"
             onClick={handleLogout}
+            className="gap-1.5 text-muted-foreground"
+          >
+            <LogOut className="size-4" data-icon="inline-start" />
+            Sair
+          </Button>
+        )}
+
+        {/* No baú real do paciente (com sessão própria), o botão de sair encerra a sessão dele,
+            não a do cuidador (que nem existe nesse fluxo). */}
+        {!loading && screen === "patient" && baulAtivo && PACIENTE_PODE_SAIR && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handlePatientExit}
             className="gap-1.5 text-muted-foreground"
           >
             <LogOut className="size-4" data-icon="inline-start" />
@@ -120,7 +171,7 @@ export function AppShell() {
       )}
 
       {!loading && screen === "login" && (
-        <LoginScreen onSelectPatient={() => setScreen("patient-pin")} />
+        <LoginScreen onSelectPatient={() => setScreen("patient-access")} />
       )}
 
       {!loading && screen === "caregiver" && (
@@ -135,29 +186,37 @@ export function AppShell() {
             onAddPatient={handleAddPatient}
             onAccessPatient={(id) => {
               setActivePatientId(id)
+              setBaulAtivo(null) // modo preview: sem dados reais do baú
               setScreen("patient")
             }}
           />
         </>
       )}
 
-      {!loading && screen === "patient-pin" && activePatient && (
-        <PatientPinScreen patient={activePatient} onSuccess={() => setScreen("patient")} />
+      {!loading && screen === "reset-password" && (
+        <ResetPasswordScreen
+          onDone={() => {
+            recoveringRef.current = false
+            encerrarRecuperacaoDeSenha()
+            window.history.replaceState(null, "", window.location.pathname)
+            setScreen("caregiver")
+          }}
+        />
       )}
 
-      {/* Sem sessão de cuidador não há pacientes visíveis (a RLS bloqueia). */}
-      {!loading && screen === "patient-pin" && !activePatient && (
-        <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-6 py-24 text-center">
-          <p className="text-muted-foreground">
-            Para abrir a Área do Paciente, o cuidador precisa entrar primeiro e escolher o paciente.
-          </p>
-          <Button variant="outline" onClick={() => setScreen("login")}>
-            Voltar
-          </Button>
-        </div>
+      {!loading && screen === "patient-access" && (
+        <PatientAccessScreen
+          onBack={() => setScreen("login")}
+          onEnter={(baul) => {
+            setBaulAtivo(baul)
+            setScreen("patient")
+          }}
+        />
       )}
 
-      {!loading && screen === "patient" && activePatient && <PatientChest patient={activePatient} />}
+      {!loading && screen === "patient" && (baulAtivo || activePatient) && (
+        <PatientChest patient={!baulAtivo ? activePatient : undefined} baul={baulAtivo ?? undefined} />
+      )}
     </div>
   )
 }

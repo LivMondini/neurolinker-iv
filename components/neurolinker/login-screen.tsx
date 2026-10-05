@@ -8,9 +8,13 @@ import { Brain, ShieldCheck, Lock, Eye, Stethoscope, Heart, ChevronRight, ArrowL
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 
+// Mostra o botão "Continuar com o Google". Deixe false até configurar o provider
+// no Google Cloud e no Supabase (Authentication → Providers → Google).
+const LOGIN_COM_GOOGLE = false
+
 interface LoginScreenProps {
-  // O cuidador não precisa mais avisar o AppShell: o onAuthStateChange (SIGNED_IN) cuida disso.
-  // Reservado para o login do paciente no próprio aparelho (opção B, ainda não construída).
+  // Agora usado de verdade: leva para a tela de acesso do paciente
+  // (pareamento do aparelho + PIN), sem depender de login do cuidador.
   onSelectPatient?: () => void
 }
 type AuthMode = "login" | "signup" | "forgot"
@@ -24,7 +28,7 @@ function traduzirErro(msg: string) {
   return "Ocorreu um erro. Tente novamente."
 }
 
-export function LoginScreen(_props: LoginScreenProps) {
+export function LoginScreen(props: LoginScreenProps) {
   const [mode, setMode] = useState<AuthMode>("login")
   const [caregiverAuth, setCaregiverAuth] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -63,9 +67,7 @@ export function LoginScreen(_props: LoginScreenProps) {
               title="Área do Paciente"
               description="Modo simplificado, foco em memórias e jogos."
               accent="patient"
-              disabled
-              badge="Em breve"
-              onClick={() => {}}
+              onClick={() => props.onSelectPatient?.()}
             />
           </div>
         </div>
@@ -289,7 +291,7 @@ function CaregiverAuth({
               {mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar instruções"}
             </Button>
 
-            {mode === "login" && (
+            {LOGIN_COM_GOOGLE && mode === "login" && (
               <>
                 <div className="relative my-1">
                   <div className="absolute inset-0 flex items-center">

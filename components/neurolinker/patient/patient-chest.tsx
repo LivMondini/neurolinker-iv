@@ -2,20 +2,29 @@
 
 import { Heart } from "lucide-react"
 import type { PatientSummary } from "@/lib/neurolinker-data"
+import type { BaulData } from "@/lib/supabase"
 import { MemoryOfDay } from "./memory-of-day"
 import { WhoIsWho } from "./who-is-who"
 import { LifeTimeline } from "./life-timeline"
 import { MemoryGame } from "./memory-game"
 
-export function PatientChest({ patient }: { patient?: PatientSummary }) {
-  const firstName = patient?.name?.split(" ")[0] ?? "Seu João"
+// `patient`: usado no modo "preview do cuidador" (botão Acessar conta, sem PIN).
+// `baul`: usado no acesso real do paciente (depois do PIN), com dados vindos do banco.
+// TODO: MemoryOfDay, WhoIsWho, LifeTimeline e MemoryGame ainda usam dados mockados
+// internamente. Quando baul.memorias/baul.perguntas estiverem prontos para uso,
+// eles precisam receber esses dados em vez de buscar sozinhos.
+export function PatientChest({ patient, baul }: { patient?: PatientSummary; baul?: BaulData }) {
+  const nome = baul?.paciente.name ?? patient?.name
+  const firstName = nome?.split(" ")[0] ?? "Seu João"
+  const avatarUrl = baul?.paciente.avatar_url || patient?.avatarUrl || "/images/seu-joao-avatar.png"
+
   return (
     <div className="min-h-[calc(100vh-56px)] bg-slate-50">
       <div className="mx-auto flex max-w-4xl flex-col gap-8 px-4 py-10 sm:px-8">
         <header className="flex items-center gap-4">
           <img
-            src={patient?.avatarUrl || "/images/seu-joao-avatar.png"}
-            alt={`Foto de ${patient?.name ?? "Seu João"}`}
+            src={avatarUrl}
+            alt={`Foto de ${nome ?? "Seu João"}`}
             className="size-20 rounded-full border-4 border-white object-cover shadow-md"
           />
           <div>
