@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Card,
   CardContent,
@@ -9,37 +9,68 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ImagePlus, Mic, FileText, Image as ImageIcon } from "lucide-react";
 import type { PatientSummary } from "@/lib/neurolinker-data";
+import {
+  fetchMemorias,
+  uploadMemoria,
+  uploadArquivoMemoria,
+  obterUrlAssinada,
+} from "@/lib/supabase";
 
-const mediaItems = [
-  {
-    type: "photo",
-    label: "Casamento - 1975",
-    src: "/images/timeline-1970.png",
-  },
-  {
-    type: "photo",
-    label: "Oficina de marcenaria",
-    src: "/images/timeline-1960.png",
-  },
-  {
-    type: "photo",
-    label: "Aniversário em família",
-    src: "/images/timeline-1980.png",
-  },
-];
+type Memoria = {
+  id: string;
+  type: "photo" | "audio" | "text";
+  label: string;
+  media_path: string | null;
+  content: string | null;
+  url?: string;
+};
 
 export function MemoryManager({ patient }: { patient?: PatientSummary }) {
-  // useRef: referências aos inputs de arquivo escondidos
+  // useRef: acesso aos inputs de arquivo escondidos
   const photoInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
-  // useState: guarda o arquivo que a pessoa escolheu, para mostrar na tela
   const [fotoEscolhida, setFotoEscolhida] = useState<File | null>(null);
   const [audioEscolhido, setAudioEscolhido] = useState<File | null>(null);
+  const [mostrarRelato, setMostrarRelato] = useState(false);
+  const [relato, setRelato] = useState("");
+  const [titulo, setTitulo] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [memorias, setMemorias] = useState<Memoria[]>([]);
 
-  // Limpa o input (via ref) e o estado
+  async function carregarMemorias() {
+    if (!patient?.id) {
+      setMemorias([]);
+      return;
+    }
+    try {
+      const dados = (await fetchMemorias(patient.id)) as Memoria[];
+      // Converte media_path em URL temporária para poder exibir
+      const comUrl = await Promise.all(
+        dados.map(async (m) => {
+          if (!m.media_path) return m;
+          try {
+            return { ...m, url: await obterUrlAssinada(m.media_path) };
+          } catch {
+            return m;
+          }
+        }),
+      );
+      setMemorias(comUrl);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Erro ao carregar memórias.");
+    }
+  }
+
+  useEffect(() => {
+    carregarMemorias();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patient?.id]);
+
   function removerFoto() {
     if (photoInputRef.current) photoInputRef.current.value = "";
     setFotoEscolhida(null);
@@ -50,9 +81,62 @@ export function MemoryManager({ patient }: { patient?: PatientSummary }) {
     setAudioEscolhido(null);
   }
 
-  // Para integrar com Supabase: substitua `mediaItems` pelo resultado de
-  // `fetchMemorias(patient.id)` e use `uploadMemoria(dados)` nos botões de envio
-  // (ver lib/supabase.ts).
+  async function salvar() {
+    if (!patient?.id) return setErro("Selecione um paciente primeiro.");
+    if (!titulo.trim()) return setErro("Dê um título para a memória.");
+    if (!fotoEscolhida && !audioEscolhido && !relato.trim()) {
+      return setErro("Escolha uma foto, um áudio ou escreva um relato.");
+    }
+
+    setSalvando(true);
+    setErro("");
+    try {
+      if (fotoEscolhida) {
+        const path = await uploadArquivoMemoria(patient.id, fotoEscolhida);
+        await uploadMemoria({
+          pacienteId: patient.id,
+          type: "photo",
+          label: titulo.trim(),
+          mediaPath: path,
+        });
+      }
+      if (audioEscolhido) {
+        const path = await uploadArquivoMemoria(patient.id, audioEscolhido);
+        await uploadMemoria({
+          pacienteId: patient.id,
+          type: "audio",
+          label: titulo.trim(),
+          mediaPath: path,
+        });
+      }
+      if (relato.trim()) {
+        await uploadMemoria({
+          pacienteId: patient.id,
+          type: "text",
+          label: titulo.trim(),
+          content: relato.trim(),
+        });
+      }
+
+      removerFoto();
+      removerAudio();
+      setRelato("");
+      setTitulo("");
+      setMostrarRelato(false);
+      await carregarMemorias();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Erro ao salvar a memória.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  const temAlgoParaSalvar = !!(
+    fotoEscolhida ||
+    audioEscolhido ||
+    relato.trim()
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -67,7 +151,6 @@ export function MemoryManager({ patient }: { patient?: PatientSummary }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {/* Inputs escondidos: o botão bonito chama .click() neles via ref */}
         <input
           ref={photoInputRef}
           type="file"
@@ -103,9 +186,10 @@ export function MemoryManager({ patient }: { patient?: PatientSummary }) {
             className="h-24 flex-col gap-2 bg-[#0284c7]/5 hover:bg-[#0284c7]/10"
           >
             <Mic className="size-5 text-[#0284c7]" data-icon="inline-start" />
-            Gravar áudio
+            Enviar áudio
           </Button>
           <Button
+            onClick={() => setMostrarRelato((v) => !v)}
             variant="outline"
             className="h-24 flex-col gap-2 bg-[#0284c7]/5 hover:bg-[#0284c7]/10"
           >
@@ -117,7 +201,16 @@ export function MemoryManager({ patient }: { patient?: PatientSummary }) {
           </Button>
         </div>
 
-        {/* Arquivos escolhidos, com botão para remover */}
+        {mostrarRelato && (
+          <textarea
+            value={relato}
+            onChange={(e) => setRelato(e.target.value)}
+            placeholder="Escreva o relato de vida aqui..."
+            rows={4}
+            className="w-full rounded-lg border border-border bg-background p-3 text-sm"
+          />
+        )}
+
         {(fotoEscolhida || audioEscolhido) && (
           <div className="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm">
             {fotoEscolhida && (
@@ -139,30 +232,59 @@ export function MemoryManager({ patient }: { patient?: PatientSummary }) {
           </div>
         )}
 
+        {temAlgoParaSalvar && (
+          <div className="flex flex-col gap-3">
+            <Input
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              placeholder="Título da memória (ex.: Casamento - 1975)"
+            />
+            <Button onClick={salvar} disabled={salvando}>
+              {salvando ? "Salvando..." : "Salvar memória"}
+            </Button>
+          </div>
+        )}
+
+        {erro && <p className="text-sm text-red-600">{erro}</p>}
+
         <div>
           <h4 className="mb-3 text-sm font-medium text-muted-foreground">
             Mídias cadastradas
           </h4>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {mediaItems.map((item) => (
-              <div
-                key={item.label}
-                className="group relative overflow-hidden rounded-xl border border-border"
-              >
-                <img
-                  src={item.src || "/placeholder.svg"}
-                  alt={item.label}
-                  className="h-32 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-                <div className="flex items-center gap-2 bg-card p-2.5">
-                  <ImageIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate text-xs font-medium">
-                    {item.label}
-                  </span>
+          {memorias.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma memória cadastrada ainda.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {memorias.map((item) => (
+                <div
+                  key={item.id}
+                  className="overflow-hidden rounded-xl border border-border"
+                >
+                  {item.type === "photo" && item.url && (
+                    <img
+                      src={item.url}
+                      alt={item.label}
+                      className="h-32 w-full object-cover"
+                    />
+                  )}
+                  {item.type === "audio" && item.url && (
+                    <audio controls src={item.url} className="w-full" />
+                  )}
+                  {item.type === "text" && (
+                    <p className="line-clamp-4 p-3 text-xs">{item.content}</p>
+                  )}
+                  <div className="flex items-center gap-2 bg-card p-2.5">
+                    <ImageIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate text-xs font-medium">
+                      {item.label}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
