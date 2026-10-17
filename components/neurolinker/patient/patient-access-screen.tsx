@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { ArrowLeft, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { PatientPinScreen } from "./patient-pin-screen"
+import { useEffect, useState } from "react";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PatientPinScreen } from "./patient-pin-screen";
 import {
   limparTokenDispositivo,
   limparTokenSessao,
-  obterBaul,
+  obterBaulComMidia,
   obterTokenDispositivo,
   pacienteEntrar,
   parearDispositivo,
   type BaulData,
-} from "@/lib/supabase"
+} from "@/lib/supabase";
 
 // Ponto de entrada da Área do Paciente (chamado pelo RoleCard em login-screen.tsx).
 // 1) Aparelho não pareado: pede o código de 8 caracteres gerado pelo cuidador.
@@ -23,62 +23,67 @@ export function PatientAccessScreen({
   onEnter,
   onBack,
 }: {
-  onEnter: (baul: BaulData) => void
-  onBack: () => void
+  onEnter: (baul: BaulData) => void;
+  onBack: () => void;
 }) {
-  const [checking, setChecking] = useState(true)
-  const [paired, setPaired] = useState(false)
-  const [aviso, setAviso] = useState("")
+  const [checking, setChecking] = useState(true);
+  const [paired, setPaired] = useState(false);
+  const [aviso, setAviso] = useState("");
 
   useEffect(() => {
-    let active = true
+    let active = true;
 
     async function iniciar() {
       if (!obterTokenDispositivo()) {
-        if (active) setChecking(false) // não pareado: mostra o código
-        return
+        if (active) setChecking(false); // não pareado: mostra o código
+        return;
       }
 
-      setPaired(true)
+      setPaired(true);
       try {
-        // Se ainda existe uma sessão válida, entra direto, sem PIN
-        const baul = await obterBaul()
-        if (!active) return
+        // Se ainda existe uma sessão válida, entra direto, sem PIN.
+        // Já traz as URLs assinadas das fotos e áudios.
+        const baul = await obterBaulComMidia();
+        if (!active) return;
         if (baul) {
-          onEnter(baul)
-          return
+          onEnter(baul);
+          return;
         }
 
         // Sem sessão válida. Antes de pedir o PIN, confere se o aparelho ainda é aceito
         // (o cuidador pode ter revogado). Com PIN vazio o banco só valida o aparelho:
         // não gasta tentativa e não cria sessão.
-        const sonda = await pacienteEntrar("")
-        if (!active) return
+        const sonda = await pacienteEntrar("");
+        if (!active) return;
         if (!sonda.ok && sonda.motivo === "dispositivo_invalido") {
-          limparTokenDispositivo()
-          limparTokenSessao()
-          setAviso("Este aparelho foi desconectado. Peça um novo código a quem cuida de você.")
-          setPaired(false)
+          limparTokenDispositivo();
+          limparTokenSessao();
+          setAviso(
+            "Este aparelho foi desconectado. Peça um novo código a quem cuida de você.",
+          );
+          setPaired(false);
         }
       } catch (err) {
-        console.error("[NeuroLinker] erro ao restaurar sessão:", err)
+        // Falha de rede/servidor: a sessão NÃO é apagada. O paciente cai na tela do PIN
+        // e, quando a internet voltar, a sessão ainda estará válida.
+        console.error("[NeuroLinker] erro ao restaurar sessão:", err);
       }
-      if (active) setChecking(false)
+      if (active) setChecking(false);
     }
 
-    iniciar()
+    iniciar();
     return () => {
-      active = false
-    }
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
   async function handlePinSuccess() {
     // Falha de rede ou sessão que não vale logo após o PIN: o erro sobe para a tela do PIN,
     // que mostra o aviso e deixa o paciente tentar de novo.
-    const baul = await obterBaul()
-    if (!baul) throw new Error("sessao_nao_restaurada")
-    onEnter(baul)
+    const baul = await obterBaulComMidia();
+    if (!baul) throw new Error("sessao_nao_restaurada");
+    onEnter(baul);
   }
 
   if (checking) {
@@ -86,11 +91,20 @@ export function PatientAccessScreen({
       <main className="flex min-h-[calc(100vh-56px)] items-center justify-center bg-slate-50">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </main>
-    )
+    );
   }
 
   if (!paired) {
-    return <PairingStep onBack={onBack} onPaired={() => { setAviso(""); setPaired(true) }} aviso={aviso} />
+    return (
+      <PairingStep
+        onBack={onBack}
+        onPaired={() => {
+          setAviso("");
+          setPaired(true);
+        }}
+        aviso={aviso}
+      />
+    );
   }
 
   return (
@@ -98,11 +112,13 @@ export function PatientAccessScreen({
       onSuccess={handlePinSuccess}
       onBack={onBack}
       onDeviceInvalid={() => {
-        setAviso("Este aparelho foi desconectado. Peça um novo código a quem cuida de você.")
-        setPaired(false)
+        setAviso(
+          "Este aparelho foi desconectado. Peça um novo código a quem cuida de você.",
+        );
+        setPaired(false);
       }}
     />
-  )
+  );
 }
 
 function PairingStep({
@@ -110,53 +126,67 @@ function PairingStep({
   onPaired,
   aviso,
 }: {
-  onBack: () => void
-  onPaired: () => void
-  aviso?: string
+  onBack: () => void;
+  onPaired: () => void;
+  aviso?: string;
 }) {
-  const [codigo, setCodigo] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("")
+  const [codigo, setCodigo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (codigo.trim().length !== 8 || loading) return
+    e.preventDefault();
+    if (codigo.trim().length !== 8 || loading) return;
 
-    setLoading(true)
-    setErrorMessage("")
+    setLoading(true);
+    setErrorMessage("");
     try {
-      await parearDispositivo(codigo)
-      onPaired()
-    } catch (err: any) {
-      console.error("Erro no pareamento:", err?.message, err?.code)
-      if (err?.message?.includes("codigo_invalido_ou_expirado")) {
-        setErrorMessage("Código inválido ou expirado. Peça um novo código a quem cuida de você.")
-      } else if (err?.code === "PGRST202") {
-        setErrorMessage("O pareamento ainda não está configurado no servidor.")
+      await parearDispositivo(codigo);
+      onPaired();
+    } catch (err: unknown) {
+      const e = err as { message?: string; code?: string } | null;
+      console.error("Erro no pareamento:", e?.message, e?.code);
+      if (e?.message?.includes("codigo_invalido_ou_expirado")) {
+        setErrorMessage(
+          "Código inválido ou expirado. Peça um novo código a quem cuida de você.",
+        );
+      } else if (e?.code === "PGRST202") {
+        setErrorMessage("O pareamento ainda não está configurado no servidor.");
       } else {
-        setErrorMessage("Não foi possível conectar. Verifique a internet e tente de novo.")
+        setErrorMessage(
+          "Não foi possível conectar. Verifique a internet e tente de novo.",
+        );
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   return (
     <main className="flex min-h-[calc(100vh-56px)] items-center justify-center bg-slate-50 px-5 py-10">
       <section className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-xl sm:p-12">
-        <Button variant="ghost" onClick={onBack} className="-ml-3 mb-4 gap-2 text-muted-foreground">
+        <Button
+          variant="ghost"
+          onClick={onBack}
+          className="-ml-3 mb-4 gap-2 text-muted-foreground"
+        >
           <ArrowLeft data-icon="inline-start" />
           Voltar
         </Button>
 
-        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Primeiro acesso neste aparelho</h1>
+        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+          Primeiro acesso neste aparelho
+        </h1>
         <p className="mt-3 text-base leading-relaxed text-slate-600">
-          Peça para quem cuida de você gerar um código no painel, e digite esse código abaixo. Isso só precisa ser
-          feito uma vez neste aparelho.
+          Peça para quem cuida de você gerar um código no painel, e digite esse
+          código abaixo. Isso só precisa ser feito uma vez neste aparelho.
         </p>
 
         {aviso && (
-          <p role="status" className="mt-4 rounded-xl bg-amber-50 p-4 text-base leading-relaxed text-amber-900">
+          <p
+            role="status"
+            className="mt-4 rounded-xl bg-amber-50 p-4 text-base leading-relaxed text-amber-900"
+          >
             {aviso}
           </p>
         )}
@@ -164,7 +194,9 @@ function PairingStep({
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <Input
             value={codigo}
-            onChange={(e) => setCodigo(e.target.value.toUpperCase().slice(0, 8))}
+            onChange={(e) =>
+              setCodigo(e.target.value.toUpperCase().slice(0, 8))
+            }
             placeholder="Ex: AB3D9F2K"
             maxLength={8}
             autoCapitalize="characters"
@@ -173,7 +205,9 @@ function PairingStep({
             aria-label="Código de pareamento de 8 caracteres"
           />
 
-          {errorMessage && <p className="text-sm font-medium text-red-600">{errorMessage}</p>}
+          {errorMessage && (
+            <p className="text-sm font-medium text-red-600">{errorMessage}</p>
+          )}
 
           <Button
             type="submit"
@@ -186,5 +220,5 @@ function PairingStep({
         </form>
       </section>
     </main>
-  )
+  );
 }

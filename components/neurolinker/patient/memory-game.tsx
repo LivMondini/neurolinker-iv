@@ -1,41 +1,59 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Check, X, PartyPopper, Gamepad2 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { trueFalseQuestions } from "@/lib/neurolinker-data"
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Check, X, PartyPopper, Gamepad2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { trueFalseQuestions } from "@/lib/neurolinker-data";
 
-export function MemoryGame() {
-  const [index, setIndex] = useState(0)
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null)
-  const [finished, setFinished] = useState(false)
-  const [score, setScore] = useState(0)
+type Props = {
+  perguntas?: {
+    id: string;
+    question: string;
+    correctAnswer: boolean;
+    category?: string;
+  }[];
+};
 
-  const current = trueFalseQuestions[index]
+export function MemoryGame({ perguntas }: Props) {
+  const questions = perguntas ?? trueFalseQuestions;
+  const [index, setIndex] = useState(0);
+  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [finished, setFinished] = useState(false);
+  const [score, setScore] = useState(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+
+  const current = questions[index];
 
   function handleAnswer(answer: boolean) {
-    if (feedback) return
-    const correct = answer === current.correctAnswer
-    setFeedback(correct ? "correct" : "wrong")
-    if (correct) setScore((s) => s + 1)
+    if (feedback || !current) return;
+    const correct = answer === current.correctAnswer;
+    setFeedback(correct ? "correct" : "wrong");
+    if (correct) setScore((s) => s + 1);
 
-    setTimeout(() => {
-      if (index + 1 < trueFalseQuestions.length) {
-        setIndex((i) => i + 1)
-        setFeedback(null)
+    timer.current = setTimeout(() => {
+      if (index + 1 < questions.length) {
+        setIndex((i) => i + 1);
+        setFeedback(null);
       } else {
-        setFinished(true)
+        setFinished(true);
       }
-    }, 1200)
+    }, 1200);
   }
 
   function handleRestart() {
-    setIndex(0)
-    setFeedback(null)
-    setFinished(false)
-    setScore(0)
+    setIndex(0);
+    setFeedback(null);
+    setFinished(false);
+    setScore(0);
   }
 
   return (
@@ -47,22 +65,37 @@ export function MemoryGame() {
         <h2 className="text-2xl font-bold text-slate-900">Jogo da Memória</h2>
       </div>
 
-      {!finished ? (
+      {questions.length === 0 ? (
+        <p className="text-lg text-slate-600">
+          Ainda não há perguntas cadastradas. Peça ao seu cuidador para
+          adicionar algumas.
+        </p>
+      ) : !finished ? (
         <div className="flex flex-col items-center gap-6 text-center">
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-            Pergunta {index + 1} de {trueFalseQuestions.length}
+            Pergunta {index + 1} de {questions.length}
           </p>
-          <p className="text-xl font-medium leading-relaxed text-slate-800 sm:text-2xl">{current.question}</p>
+          <p className="text-xl font-medium leading-relaxed text-slate-800 sm:text-2xl">
+            {current.question}
+          </p>
 
           {feedback ? (
             <div
               className={cn(
                 "flex items-center gap-2 rounded-full px-5 py-2.5 text-lg font-semibold",
-                feedback === "correct" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700",
+                feedback === "correct"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-rose-100 text-rose-700",
               )}
             >
-              {feedback === "correct" ? <Check className="size-5" /> : <X className="size-5" />}
-              {feedback === "correct" ? "Muito bem!" : "Não foi essa, mas tudo bem!"}
+              {feedback === "correct" ? (
+                <Check className="size-5" />
+              ) : (
+                <X className="size-5" />
+              )}
+              {feedback === "correct"
+                ? "Muito bem!"
+                : "Não foi essa, mas tudo bem!"}
             </div>
           ) : (
             <div className="flex w-full flex-col gap-4 sm:flex-row">
@@ -91,9 +124,11 @@ export function MemoryGame() {
           <div className="flex size-16 items-center justify-center rounded-full bg-blue-100 text-blue-800">
             <PartyPopper className="size-8" />
           </div>
-          <p className="text-xl font-bold text-slate-900">Você terminou o jogo!</p>
+          <p className="text-xl font-bold text-slate-900">
+            Você terminou o jogo!
+          </p>
           <p className="text-lg text-slate-700">
-            Você acertou {score} de {trueFalseQuestions.length} perguntas.
+            Você acertou {score} de {questions.length} perguntas.
           </p>
           <Button
             size="lg"
@@ -105,5 +140,5 @@ export function MemoryGame() {
         </div>
       )}
     </Card>
-  )
+  );
 }

@@ -497,3 +497,24 @@ export async function obterBaulComMidia() {
   }
   return await res.json();
 }
+export async function deletePerguntaJogo(id: string): Promise<void> {
+  const { error } = await supabase.from("perguntas_jogo").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Totais para o dashboard do cuidador (a RLS já filtra só os dados dele).
+export async function contarMemorias(): Promise<number> {
+  const { count, error } = await supabase
+    .from("memorias")
+    .select("id", { count: "exact", head: true });
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function contarPerguntasJogo(): Promise<number> {
+  const { count, error } = await supabase
+    .from("perguntas_jogo")
+    .select("id", { count: "exact", head: true });
+  if (error) throw error;
+  return count ?? 0;
+}
