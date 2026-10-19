@@ -1,17 +1,47 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { UserRound, Plus, Search, KeyRound, ExternalLink, Loader2, RefreshCw, Link2, Smartphone } from "lucide-react"
-import type { EngagementLevel, PatientSummary } from "@/lib/neurolinker-data"
+import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  UserRound,
+  Plus,
+  Search,
+  KeyRound,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Link2,
+  Smartphone,
+} from "lucide-react";
+import type { EngagementLevel, PatientSummary } from "@/lib/neurolinker-data";
 import {
   addPaciente,
   redefinirPin,
@@ -20,48 +50,65 @@ import {
   revogarDispositivo,
   rowToPatient,
   type DispositivoRow,
-} from "@/lib/supabase"
+} from "@/lib/supabase";
 
 const engagementClassName: Record<EngagementLevel, string> = {
   Alto: "border-emerald-200 bg-emerald-100/60 text-emerald-800 hover:bg-emerald-100/60",
-  Médio: "border-amber-200 bg-amber-100/60 text-amber-800 hover:bg-amber-100/60",
+  Médio:
+    "border-amber-200 bg-amber-100/60 text-amber-800 hover:bg-amber-100/60",
   Baixo: "border-rose-200 bg-rose-100/60 text-rose-800 hover:bg-rose-100/60",
-}
+};
 
 // "Agora mesmo", "Há 5 min", "Hoje às 14:30", "Ontem às 09:10", "12 de out às 14:30"
 function formatarUltimaAtividade(valor: string | null | undefined): string {
-  if (!valor) return "Ainda sem atividade"
-  const data = new Date(valor)
-  if (Number.isNaN(data.getTime())) return valor // já veio em texto (ex.: "Ainda sem atividade")
+  if (!valor) return "Ainda sem atividade";
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return valor; // já veio em texto (ex.: "Ainda sem atividade")
 
-  const agora = new Date()
-  const diffMin = Math.floor((agora.getTime() - data.getTime()) / 60000)
-  if (diffMin < 1) return "Agora mesmo"
-  if (diffMin < 60) return `Há ${diffMin} min`
+  const agora = new Date();
+  const diffMin = Math.floor((agora.getTime() - data.getTime()) / 60000);
+  if (diffMin < 1) return "Agora mesmo";
+  if (diffMin < 60) return `Há ${diffMin} min`;
 
-  const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-  const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate())
-  const inicioOntem = new Date(inicioHoje)
-  inicioOntem.setDate(inicioOntem.getDate() - 1)
+  const hora = data.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const inicioHoje = new Date(
+    agora.getFullYear(),
+    agora.getMonth(),
+    agora.getDate(),
+  );
+  const inicioOntem = new Date(inicioHoje);
+  inicioOntem.setDate(inicioOntem.getDate() - 1);
 
-  if (data >= inicioHoje) return `Hoje às ${hora}`
-  if (data >= inicioOntem) return `Ontem às ${hora}`
+  if (data >= inicioHoje) return `Hoje às ${hora}`;
+  if (data >= inicioOntem) return `Ontem às ${hora}`;
 
-  const dia = data.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "")
-  const ano = data.getFullYear() !== agora.getFullYear() ? ` de ${data.getFullYear()}` : ""
-  return `${dia}${ano} às ${hora}`
+  const dia = data
+    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+    .replace(".", "");
+  const ano =
+    data.getFullYear() !== agora.getFullYear()
+      ? ` de ${data.getFullYear()}`
+      : "";
+  return `${dia}${ano} às ${hora}`;
 }
 
 function formatarData(valor: string): string {
-  return new Date(valor).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+  return new Date(valor).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 interface Props {
-  patients: PatientSummary[]
-  activePatientId?: string
-  onSelectPatient: (id: string) => void
-  onAddPatient: (patient: PatientSummary) => void
-  onAccessPatient: (id: string) => void
+  patients: PatientSummary[];
+  activePatientId?: string;
+  onSelectPatient: (id: string) => void;
+  onAddPatient: (patient: PatientSummary) => void;
+  onAccessPatient: (id: string) => void;
 }
 
 export function PatientsTable({
@@ -71,135 +118,164 @@ export function PatientsTable({
   onAddPatient,
   onAccessPatient,
 }: Props) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState("")
-  const [name, setName] = useState("")
-  const [age, setAge] = useState("")
-  const [stage, setStage] = useState("Inicial")
-  const [avatarUrl, setAvatarUrl] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("")
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [stage, setStage] = useState("Inicial");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   // PIN recém-gerado: mostrado uma única vez, nunca mais legível (no banco só existe o hash).
-  const [created, setCreated] = useState<{ name: string; pin: string; novo: boolean } | null>(null)
+  const [created, setCreated] = useState<{
+    name: string;
+    pin: string;
+    novo: boolean;
+  } | null>(null);
+  // PIN guardado (não mostrado) até o aparelho ser pareado
+  const [pendingPin, setPendingPin] = useState<{
+    id: string;
+    name: string;
+    pin: string;
+  } | null>(null);
   // Redefinição de PIN
-  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
-  const [resetting, setResetting] = useState(false)
-  const [resetError, setResetError] = useState("")
+  const [resetTarget, setResetTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState("");
   // Código de pareamento (primeiro acesso no aparelho do paciente)
-  const [pairTarget, setPairTarget] = useState<{ id: string; name: string } | null>(null)
-  const [pairCode, setPairCode] = useState<{ codigo: string; expiraEm: string } | null>(null)
-  const [pairing, setPairing] = useState(false)
-  const [pairError, setPairError] = useState("")
+  const [pairTarget, setPairTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [pairCode, setPairCode] = useState<{
+    codigo: string;
+    expiraEm: string;
+  } | null>(null);
+  const [pairing, setPairing] = useState(false);
+  const [pairError, setPairError] = useState("");
   // Aparelhos vinculados (listar e revogar)
-  const [devTarget, setDevTarget] = useState<{ id: string; name: string } | null>(null)
-  const [devices, setDevices] = useState<DispositivoRow[]>([])
-  const [devLoading, setDevLoading] = useState(false)
-  const [devError, setDevError] = useState("")
-  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null)
-  const [revokingId, setRevokingId] = useState<string | null>(null)
+  const [devTarget, setDevTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [devices, setDevices] = useState<DispositivoRow[]>([]);
+  const [devLoading, setDevLoading] = useState(false);
+  const [devError, setDevError] = useState("");
+  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   async function handleReset() {
-    if (!resetTarget) return
-    setResetting(true)
-    setResetError("")
+    if (!resetTarget) return;
+    setResetting(true);
+    setResetError("");
     try {
-      const pin = await redefinirPin(resetTarget.id)
-      setCreated({ name: resetTarget.name, pin, novo: true })
-      setResetTarget(null)
+      const pin = await redefinirPin(resetTarget.id);
+      setCreated({ name: resetTarget.name, pin, novo: true });
+      setResetTarget(null);
     } catch (err) {
-      console.error(err)
-      setResetError("Não foi possível gerar um novo PIN. Tente novamente.")
+      console.error(err);
+      setResetError("Não foi possível gerar um novo PIN. Tente novamente.");
     } finally {
-      setResetting(false)
+      setResetting(false);
     }
   }
 
   async function handlePair(id: string, patientName: string) {
-    setPairTarget({ id, name: patientName })
-    setPairCode(null)
-    setPairError("")
-    setPairing(true)
+    setPairTarget({ id, name: patientName });
+    setPairCode(null);
+    setPairError("");
+    setPairing(true);
     try {
-      setPairCode(await gerarCodigoPareamento(id))
+      setPairCode(await gerarCodigoPareamento(id));
     } catch (err: any) {
-      console.error("Erro ao gerar código:", err?.message, err?.code)
-      setPairError("Não foi possível gerar o código. Tente novamente.")
+      console.error("Erro ao gerar código:", err?.message, err?.code);
+      setPairError("Não foi possível gerar o código. Tente novamente.");
     } finally {
-      setPairing(false)
+      setPairing(false);
     }
   }
 
   async function carregarDispositivos(pacienteId: string) {
-    setDevLoading(true)
-    setDevError("")
+    setDevLoading(true);
+    setDevError("");
     try {
-      setDevices(await listarDispositivos(pacienteId))
+      setDevices(await listarDispositivos(pacienteId));
     } catch (err: any) {
-      console.error("Erro ao listar aparelhos:", err?.message, err?.code)
-      setDevError("Não foi possível carregar os aparelhos.")
+      console.error("Erro ao listar aparelhos:", err?.message, err?.code);
+      setDevError("Não foi possível carregar os aparelhos.");
     } finally {
-      setDevLoading(false)
+      setDevLoading(false);
     }
   }
 
   function handleOpenDevices(id: string, patientName: string) {
-    setDevTarget({ id, name: patientName })
-    setDevices([])
-    setConfirmRevokeId(null)
-    carregarDispositivos(id)
+    setDevTarget({ id, name: patientName });
+    setDevices([]);
+    setConfirmRevokeId(null);
+    carregarDispositivos(id);
   }
 
   async function handleRevoke(dispositivoId: string) {
-    if (!devTarget) return
-    setRevokingId(dispositivoId)
-    setDevError("")
+    if (!devTarget) return;
+    setRevokingId(dispositivoId);
+    setDevError("");
     try {
-      await revogarDispositivo(dispositivoId)
-      setConfirmRevokeId(null)
-      await carregarDispositivos(devTarget.id)
+      await revogarDispositivo(dispositivoId);
+      setConfirmRevokeId(null);
+      await carregarDispositivos(devTarget.id);
     } catch (err: any) {
-      console.error("Erro ao revogar aparelho:", err?.message, err?.code)
-      setDevError("Não foi possível revogar o aparelho. Tente novamente.")
+      console.error("Erro ao revogar aparelho:", err?.message, err?.code);
+      setDevError("Não foi possível revogar o aparelho. Tente novamente.");
     } finally {
-      setRevokingId(null)
+      setRevokingId(null);
     }
   }
 
   async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
-    if (!name.trim() || !age) return
+    event.preventDefault();
+    if (!name.trim() || !age) return;
 
-    setSaving(true)
-    setErrorMessage("")
+    setSaving(true);
+    setErrorMessage("");
     try {
       const { paciente, pin } = await addPaciente({
         name: name.trim(),
         age: Number(age),
         stage: `Estágio ${stage}`,
         avatarUrl: avatarUrl.trim() || undefined,
-      })
-      const patient = rowToPatient(paciente)
-      onAddPatient(patient)
-      onSelectPatient(patient.id)
+      });
+      const patient = rowToPatient(paciente);
+      onAddPatient(patient);
+      onSelectPatient(patient.id);
 
-      setOpen(false)
-      setCreated({ name: patient.name, pin, novo: false })
-      setName("")
-      setAge("")
-      setStage("Inicial")
-      setAvatarUrl("")
+      setOpen(false);
+      setPendingPin({ id: patient.id, name: patient.name, pin });
+      handlePair(patient.id, patient.name);
+      setName("");
+      setAge("");
+      setStage("Inicial");
+      setAvatarUrl("");
     } catch (err) {
-      console.error(err)
-      setErrorMessage("Não foi possível cadastrar o paciente. Tente novamente.")
+      console.error(err);
+      setErrorMessage(
+        "Não foi possível cadastrar o paciente. Tente novamente.",
+      );
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   const filteredPatients = patients.filter((patient) => {
-    const query = search.trim().toLowerCase()
-    return !query || patient.name.toLowerCase().includes(query) || patient.stage.toLowerCase().includes(query)
-  })
+    const query = search.trim().toLowerCase();
+    return (
+      !query ||
+      patient.name.toLowerCase().includes(query) ||
+      patient.stage.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <Card>
@@ -207,10 +283,14 @@ export function PatientsTable({
         <div>
           <CardTitle>Pacientes recentes</CardTitle>
           <CardDescription>
-            Acompanhe e gerencie o status e o engajamento diário de cada paciente.
+            Acompanhe e gerencie o status e o engajamento diário de cada
+            paciente.
           </CardDescription>
         </div>
-        <Button onClick={() => setOpen(true)} className="bg-[#0284c7] hover:bg-[#0284c7]/90">
+        <Button
+          onClick={() => setOpen(true)}
+          className="bg-[#0284c7] hover:bg-[#0284c7]/90"
+        >
           <Plus data-icon="inline-start" />
           Cadastrar novo paciente
         </Button>
@@ -243,38 +323,70 @@ export function PatientsTable({
             <TableBody>
               {filteredPatients.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                    {patients.length === 0
-                      ? "Você ainda não cadastrou nenhum paciente."
-                      : <>Nenhum paciente encontrado para &quot;{search}&quot;.</>}
+                  <TableCell
+                    colSpan={6}
+                    className="py-8 text-center text-sm text-muted-foreground"
+                  >
+                    {patients.length === 0 ? (
+                      "Você ainda não cadastrou nenhum paciente."
+                    ) : (
+                      <>Nenhum paciente encontrado para &quot;{search}&quot;.</>
+                    )}
                   </TableCell>
                 </TableRow>
               )}
 
               {filteredPatients.map((patient) => (
-                <TableRow key={patient.id} className={patient.id === activePatientId ? "bg-[#0284c7]/5" : ""}>
+                <TableRow
+                  key={patient.id}
+                  className={
+                    patient.id === activePatientId ? "bg-[#0284c7]/5" : ""
+                  }
+                >
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="size-9">
-                        <AvatarImage src={patient.avatarUrl} alt={patient.name} />
+                        <AvatarImage
+                          src={patient.avatarUrl}
+                          alt={patient.name}
+                        />
                         <AvatarFallback>
-                          {patient.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                          {patient.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join("")}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-foreground">{patient.name}</p>
-                        <p className="text-xs text-muted-foreground">{patient.age} anos</p>
+                        <p className="font-medium text-foreground">
+                          {patient.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {patient.age} anos
+                        </p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{patient.stage}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{formatarUltimaAtividade(patient.lastActivity)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {patient.stage}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatarUltimaAtividade(patient.lastActivity)}
+                  </TableCell>
                   <TableCell>
                     <div className="flex min-w-24 items-center gap-2">
-                      <Progress value={patient.engagementScore} className="h-2" />
-                      <span className="text-xs font-medium">{patient.engagementScore}%</span>
+                      <Progress
+                        value={patient.engagementScore}
+                        className="h-2"
+                      />
+                      <span className="text-xs font-medium">
+                        {patient.engagementScore}%
+                      </span>
                     </div>
-                    <Badge className={`mt-1 text-[10px] ${engagementClassName[patient.engagement]}`}>
+                    <Badge
+                      className={`mt-1 text-[10px] ${engagementClassName[patient.engagement]}`}
+                    >
                       {patient.engagement}
                     </Badge>
                   </TableCell>
@@ -293,25 +405,42 @@ export function PatientsTable({
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap justify-end gap-2">
-                      <Button size="sm" variant="outline" onClick={() => onSelectPatient(patient.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onSelectPatient(patient.id)}
+                      >
                         Gerenciar
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          setResetError("")
-                          setResetTarget({ id: patient.id, name: patient.name })
+                          setResetError("");
+                          setResetTarget({
+                            id: patient.id,
+                            name: patient.name,
+                          });
                         }}
                       >
                         <RefreshCw data-icon="inline-start" />
                         Novo PIN
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleOpenDevices(patient.id, patient.name)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          handleOpenDevices(patient.id, patient.name)
+                        }
+                      >
                         <Smartphone data-icon="inline-start" />
                         Aparelhos
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => onAccessPatient(patient.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onAccessPatient(patient.id)}
+                      >
                         <ExternalLink data-icon="inline-start" />
                         Acessar conta
                       </Button>
@@ -330,7 +459,9 @@ export function PatientsTable({
           <DialogHeader>
             <DialogTitle>Cadastrar novo paciente</DialogTitle>
             <DialogDescription>
-              Adicione os dados básicos para criar um novo Baú do Paciente. O PIN de acesso é gerado automaticamente.
+              Adicione os dados básicos para criar um novo Baú do Paciente.
+              Depois de criar, você recebe um código para parear o aparelho do
+              paciente e, em seguida, o PIN de acesso.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
@@ -360,7 +491,9 @@ export function PatientsTable({
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="patient-stage">Estágio da doença</FieldLabel>
+                  <FieldLabel htmlFor="patient-stage">
+                    Estágio da doença
+                  </FieldLabel>
                   <select
                     id="patient-stage"
                     value={stage}
@@ -374,7 +507,9 @@ export function PatientsTable({
                 </Field>
               </div>
               <Field>
-                <FieldLabel htmlFor="patient-avatar">Foto ou avatar (URL opcional)</FieldLabel>
+                <FieldLabel htmlFor="patient-avatar">
+                  Foto ou avatar (URL opcional)
+                </FieldLabel>
                 <Input
                   id="patient-avatar"
                   value={avatarUrl}
@@ -384,14 +519,31 @@ export function PatientsTable({
               </Field>
             </FieldGroup>
 
-            {errorMessage && <p className="mt-4 text-sm font-medium text-red-600">{errorMessage}</p>}
+            {errorMessage && (
+              <p className="mt-4 text-sm font-medium text-red-600">
+                {errorMessage}
+              </p>
+            )}
 
             <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" disabled={saving} onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving}
+                onClick={() => setOpen(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving} className="bg-[#0284c7] hover:bg-[#0284c7]/90">
-                {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : <UserRound data-icon="inline-start" />}
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-[#0284c7] hover:bg-[#0284c7]/90"
+              >
+                {saving ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <UserRound data-icon="inline-start" />
+                )}
                 Criar paciente
               </Button>
             </DialogFooter>
@@ -400,20 +552,34 @@ export function PatientsTable({
       </Dialog>
 
       {/* Confirmação para gerar novo PIN */}
-      <Dialog open={resetTarget !== null} onOpenChange={(value) => !resetting && !value && setResetTarget(null)}>
+      <Dialog
+        open={resetTarget !== null}
+        onOpenChange={(value) => !resetting && !value && setResetTarget(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Gerar novo PIN?</DialogTitle>
             <DialogDescription>
-              O PIN atual de {resetTarget?.name} deixará de funcionar imediatamente. O novo PIN será mostrado uma única vez.
+              O PIN atual de {resetTarget?.name} deixará de funcionar
+              imediatamente. O novo PIN será mostrado uma única vez.
             </DialogDescription>
           </DialogHeader>
-          {resetError && <p className="text-sm font-medium text-red-600">{resetError}</p>}
+          {resetError && (
+            <p className="text-sm font-medium text-red-600">{resetError}</p>
+          )}
           <DialogFooter>
-            <Button variant="outline" disabled={resetting} onClick={() => setResetTarget(null)}>
+            <Button
+              variant="outline"
+              disabled={resetting}
+              onClick={() => setResetTarget(null)}
+            >
               Cancelar
             </Button>
-            <Button disabled={resetting} onClick={handleReset} className="bg-[#0284c7] hover:bg-[#0284c7]/90">
+            <Button
+              disabled={resetting}
+              onClick={handleReset}
+              className="bg-[#0284c7] hover:bg-[#0284c7]/90"
+            >
               {resetting && <Loader2 className="mr-2 size-4 animate-spin" />}
               Gerar novo PIN
             </Button>
@@ -422,12 +588,16 @@ export function PatientsTable({
       </Dialog>
 
       {/* Aparelhos vinculados */}
-      <Dialog open={devTarget !== null} onOpenChange={(value) => !revokingId && !value && setDevTarget(null)}>
+      <Dialog
+        open={devTarget !== null}
+        onOpenChange={(value) => !revokingId && !value && setDevTarget(null)}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Aparelhos de {devTarget?.name}</DialogTitle>
             <DialogDescription>
-              Aparelhos que já foram pareados. Ao revogar um, ele deixa de acessar o baú e precisa ser pareado de novo.
+              Aparelhos que já foram pareados. Ao revogar um, ele deixa de
+              acessar o baú e precisa ser pareado de novo.
             </DialogDescription>
           </DialogHeader>
 
@@ -438,23 +608,29 @@ export function PatientsTable({
           )}
 
           {!devLoading && devices.length === 0 && !devError && (
-            <p className="py-4 text-center text-sm text-muted-foreground">Nenhum aparelho pareado ainda.</p>
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              Nenhum aparelho pareado ainda.
+            </p>
           )}
 
           {devices.length > 0 && (
             <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
               {devices.map((d) => {
-                const revogado = Boolean(d.revoked_at)
+                const revogado = Boolean(d.revoked_at);
                 return (
                   <div
                     key={d.id}
                     className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${revogado ? "bg-slate-50 opacity-70" : ""}`}
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{d.nome || "Aparelho sem nome"}</p>
+                      <p className="truncate text-sm font-medium">
+                        {d.nome || "Aparelho sem nome"}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Pareado em {formatarData(d.created_at)} ·{" "}
-                        {d.last_used_at ? `Último uso: ${formatarUltimaAtividade(d.last_used_at)}` : "ainda não usado"}
+                        {d.last_used_at
+                          ? `Último uso: ${formatarUltimaAtividade(d.last_used_at)}`
+                          : "ainda não usado"}
                       </p>
                     </div>
 
@@ -464,7 +640,12 @@ export function PatientsTable({
                       </Badge>
                     ) : confirmRevokeId === d.id ? (
                       <div className="flex shrink-0 gap-2">
-                        <Button size="sm" variant="outline" disabled={revokingId === d.id} onClick={() => setConfirmRevokeId(null)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={revokingId === d.id}
+                          onClick={() => setConfirmRevokeId(null)}
+                        >
                           Cancelar
                         </Button>
                         <Button
@@ -473,32 +654,44 @@ export function PatientsTable({
                           onClick={() => handleRevoke(d.id)}
                           className="bg-red-600 hover:bg-red-600/90"
                         >
-                          {revokingId === d.id && <Loader2 className="mr-2 size-4 animate-spin" />}
+                          {revokingId === d.id && (
+                            <Loader2 className="mr-2 size-4 animate-spin" />
+                          )}
                           Confirmar
                         </Button>
                       </div>
                     ) : (
-                      <Button size="sm" variant="outline" onClick={() => setConfirmRevokeId(d.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setConfirmRevokeId(d.id)}
+                      >
                         Revogar
                       </Button>
                     )}
                   </div>
-                )
+                );
               })}
             </div>
           )}
 
-          {devError && <p className="text-sm font-medium text-red-600">{devError}</p>}
+          {devError && (
+            <p className="text-sm font-medium text-red-600">{devError}</p>
+          )}
 
           <DialogFooter>
-            <Button variant="outline" disabled={Boolean(revokingId)} onClick={() => setDevTarget(null)}>
+            <Button
+              variant="outline"
+              disabled={Boolean(revokingId)}
+              onClick={() => setDevTarget(null)}
+            >
               Fechar
             </Button>
             <Button
               onClick={() => {
-                const alvo = devTarget
-                setDevTarget(null)
-                if (alvo) handlePair(alvo.id, alvo.name)
+                const alvo = devTarget;
+                setDevTarget(null);
+                if (alvo) handlePair(alvo.id, alvo.name);
               }}
               className="bg-[#0284c7] hover:bg-[#0284c7]/90"
             >
@@ -510,13 +703,19 @@ export function PatientsTable({
       </Dialog>
 
       {/* Código de pareamento */}
-      <Dialog open={pairTarget !== null} onOpenChange={(value) => !pairing && !value && setPairTarget(null)}>
+      <Dialog
+        open={pairTarget !== null}
+        onOpenChange={(value) =>
+          !pairing && !value && !pendingPin && setPairTarget(null)
+        }
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Parear aparelho de {pairTarget?.name}</DialogTitle>
             <DialogDescription>
-              Digite este código na tela &quot;Primeiro acesso&quot; do aparelho do paciente. Ele vale por 10 minutos e
-              só funciona uma vez. Depois disso, o paciente entra apenas com o PIN de 6 dígitos.
+              Digite este código na tela &quot;Primeiro acesso&quot; do aparelho
+              do paciente. Ele vale por 10 minutos e só funciona uma vez. Depois
+              disso, o paciente entra apenas com o PIN de 6 dígitos.
             </DialogDescription>
           </DialogHeader>
 
@@ -528,39 +727,88 @@ export function PatientsTable({
 
           {pairCode && (
             <div className="rounded-xl bg-sky-50 py-6 text-center">
-              <p className="font-mono text-4xl font-semibold tracking-[0.3em] text-sky-900">{pairCode.codigo}</p>
+              <p className="font-mono text-4xl font-semibold tracking-[0.3em] text-sky-900">
+                {pairCode.codigo}
+              </p>
               <p className="mt-2 text-xs text-muted-foreground">
                 Válido até{" "}
-                {new Date(pairCode.expiraEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {new Date(pairCode.expiraEm).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </p>
             </div>
           )}
 
-          {pairError && <p className="text-sm font-medium text-red-600">{pairError}</p>}
+          {pairError && (
+            <p className="text-sm font-medium text-red-600">{pairError}</p>
+          )}
 
           <DialogFooter>
-            <Button variant="outline" disabled={pairing} onClick={() => setPairTarget(null)}>
-              Fechar
-            </Button>
-            {pairError && (
-              <Button
-                onClick={() => pairTarget && handlePair(pairTarget.id, pairTarget.name)}
-                className="bg-[#0284c7] hover:bg-[#0284c7]/90"
-              >
-                Tentar de novo
-              </Button>
+            {pendingPin ? (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={pairing}
+                  onClick={() => handlePair(pendingPin.id, pendingPin.name)}
+                >
+                  Gerar novo código
+                </Button>
+                <Button
+                  disabled={pairing || !pairCode}
+                  onClick={() => {
+                    setCreated({
+                      name: pendingPin.name,
+                      pin: pendingPin.pin,
+                      novo: false,
+                    });
+                    setPendingPin(null);
+                    setPairTarget(null);
+                  }}
+                  className="bg-[#0284c7] hover:bg-[#0284c7]/90"
+                >
+                  Já digitei o código, mostrar PIN
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={pairing}
+                  onClick={() => setPairTarget(null)}
+                >
+                  Fechar
+                </Button>
+                {pairError && (
+                  <Button
+                    onClick={() =>
+                      pairTarget && handlePair(pairTarget.id, pairTarget.name)
+                    }
+                    className="bg-[#0284c7] hover:bg-[#0284c7]/90"
+                  >
+                    Tentar de novo
+                  </Button>
+                )}
+              </>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* PIN gerado: aparece uma única vez */}
-      <Dialog open={created !== null} onOpenChange={(value) => !value && setCreated(null)}>
+      <Dialog
+        open={created !== null}
+        onOpenChange={(value) => !value && setCreated(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{created?.novo ? "Novo PIN gerado" : "Paciente cadastrado"}</DialogTitle>
+            <DialogTitle>
+              {created?.novo ? "Novo PIN gerado" : "Paciente cadastrado"}
+            </DialogTitle>
             <DialogDescription>
-              Anote o PIN de {created?.name} agora. Por segurança, ele não poderá ser mostrado de novo.{created?.novo && " O PIN anterior deixou de funcionar."}
+              Anote o PIN de {created?.name} agora. Por segurança, ele não
+              poderá ser mostrado de novo.
+              {created?.novo && " O PIN anterior deixou de funcionar."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center gap-3 rounded-xl bg-amber-50 py-6">
@@ -570,12 +818,15 @@ export function PatientsTable({
             </span>
           </div>
           <DialogFooter>
-            <Button onClick={() => setCreated(null)} className="bg-[#0284c7] hover:bg-[#0284c7]/90">
+            <Button
+              onClick={() => setCreated(null)}
+              className="bg-[#0284c7] hover:bg-[#0284c7]/90"
+            >
               Anotei o PIN
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
-  )
+  );
 }

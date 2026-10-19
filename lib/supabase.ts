@@ -155,6 +155,29 @@ export async function redefinirPin(pacienteId: string): Promise<string> {
   return data as string;
 }
 
+// Apaga o paciente. Memórias, perguntas, aparelhos e sessões saem junto (ON DELETE CASCADE).
+export async function deletePaciente(pacienteId: string): Promise<void> {
+  // Limpa as fotos/áudios do storage (se falhar, segue em frente)
+  try {
+    const { data: arquivos } = await supabase.storage
+      .from("memorias")
+      .list(pacienteId, { limit: 1000 });
+    if (arquivos && arquivos.length > 0) {
+      await supabase.storage
+        .from("memorias")
+        .remove(arquivos.map((a) => `${pacienteId}/${a.name}`));
+    }
+  } catch {
+    // arquivos órfãos no storage não impedem a exclusão
+  }
+
+  const { error } = await supabase
+    .from("pacientes")
+    .delete()
+    .eq("id", pacienteId);
+  if (error) throw error;
+}
+
 // ---------------------------------------------------------------------------
 // Dispositivos do paciente (opção A: aparelho vinculado + PIN)
 // ---------------------------------------------------------------------------
@@ -491,9 +514,14 @@ export async function obterBaulComMidia() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sessionToken }),
   });
-  if (!res.ok) {
-    limparTokenSessao();
+
+  if (res.status === 401) {
+    limparTokenSessao(); // sessão realmente inválida/expirada
     return null;
+  }
+  if (!res.ok) {
+    // erro do servidor: não apaga a sessão, deixa a tela tratar
+    throw new Error("baul_indisponivel");
   }
   return await res.json();
 }
