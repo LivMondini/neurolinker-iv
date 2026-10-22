@@ -414,13 +414,13 @@ export async function fetchMemorias(pacienteId: string) {
   if (error) throw error;
   return data;
 }
-
 export async function uploadMemoria(dados: {
   pacienteId: string;
-  type: "photo" | "audio" | "text";
+  type: "photo" | "text";
   label: string;
   mediaPath?: string;
   content?: string;
+  ano?: number | null; // <- NOVO
 }) {
   const { data, error } = await supabase
     .from("memorias")
@@ -430,6 +430,7 @@ export async function uploadMemoria(dados: {
       label: dados.label,
       media_path: dados.mediaPath ?? null,
       content: dados.content ?? null,
+      ano: dados.ano ?? null,
     })
     .select()
     .single();
@@ -545,4 +546,26 @@ export async function contarPerguntasJogo(): Promise<number> {
     .select("id", { count: "exact", head: true });
   if (error) throw error;
   return count ?? 0;
+}
+
+export async function excluirPacienteCompleto(id: string): Promise<void> {
+  // 1) apaga os arquivos (fotos) do storage
+  const { data: mems } = await supabase
+    .from("memorias")
+    .select("media_path")
+    .eq("paciente_id", id);
+
+  const paths = ((mems ?? []) as { media_path: string | null }[])
+    .map((m) => m.media_path)
+    .filter((p): p is string => !!p);
+
+  if (paths.length > 0) {
+    await supabase.storage.from("memorias").remove(paths);
+  }
+
+  // 2) apaga o paciente e tudo ligado a ele no banco
+  const { error } = await supabase.rpc("excluir_paciente", {
+    p_paciente_id: id,
+  });
+  if (error) throw error;
 }

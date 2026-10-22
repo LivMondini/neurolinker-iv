@@ -40,10 +40,12 @@ import {
   RefreshCw,
   Link2,
   Smartphone,
+  Trash2,
 } from "lucide-react";
 import type { EngagementLevel, PatientSummary } from "@/lib/neurolinker-data";
 import {
   addPaciente,
+  deletePaciente,
   redefinirPin,
   gerarCodigoPareamento,
   listarDispositivos,
@@ -109,6 +111,8 @@ interface Props {
   onSelectPatient: (id: string) => void;
   onAddPatient: (patient: PatientSummary) => void;
   onAccessPatient: (id: string) => void;
+  // Opcional: quem usa a tabela remove o paciente da lista quando isto é chamado.
+  onDeletePatient?: (id: string) => void;
 }
 
 export function PatientsTable({
@@ -117,6 +121,7 @@ export function PatientsTable({
   onSelectPatient,
   onAddPatient,
   onAccessPatient,
+  onDeletePatient,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -166,6 +171,29 @@ export function PatientsTable({
   const [devError, setDevError] = useState("");
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  // Exclusão de paciente
+  const [delTarget, setDelTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [delError, setDelError] = useState("");
+
+  async function handleDelete() {
+    if (!delTarget) return;
+    setDeleting(true);
+    setDelError("");
+    try {
+      await deletePaciente(delTarget.id);
+      onDeletePatient?.(delTarget.id);
+      setDelTarget(null);
+    } catch (err: any) {
+      console.error("Erro ao excluir paciente:", err?.message, err?.code);
+      setDelError("Não foi possível excluir o paciente. Tente novamente.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleReset() {
     if (!resetTarget) return;
@@ -444,6 +472,21 @@ export function PatientsTable({
                         <ExternalLink data-icon="inline-start" />
                         Acessar conta
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-red-200 text-red-700 hover:bg-red-50"
+                        onClick={() => {
+                          setDelError("");
+                          setDelTarget({
+                            id: patient.id,
+                            name: patient.name,
+                          });
+                        }}
+                      >
+                        <Trash2 data-icon="inline-start" />
+                        Excluir
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -548,6 +591,42 @@ export function PatientsTable({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação para excluir paciente */}
+      <Dialog
+        open={delTarget !== null}
+        onOpenChange={(value) => !deleting && !value && setDelTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir {delTarget?.name}?</DialogTitle>
+            <DialogDescription>
+              Isso apaga o paciente e tudo ligado a ele: memórias, fotos,
+              perguntas do jogo e aparelhos pareados. Não dá para desfazer.
+            </DialogDescription>
+          </DialogHeader>
+          {delError && (
+            <p className="text-sm font-medium text-red-600">{delError}</p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={deleting}
+              onClick={() => setDelTarget(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              disabled={deleting}
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-600/90"
+            >
+              {deleting && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Excluir de vez
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

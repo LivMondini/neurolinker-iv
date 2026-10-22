@@ -17,6 +17,7 @@ interface Props {
   onSelectPatient: (id: string) => void;
   onAddPatient: (patient: PatientSummary) => void;
   onAccessPatient: (id: string) => void;
+  onDeletePatient: (id: string) => void;
 }
 
 const TITLES: Record<CaregiverSection, { title: string; subtitle: string }> = {
@@ -45,6 +46,7 @@ export function CaregiverDashboard({
   onSelectPatient,
   onAddPatient,
   onAccessPatient,
+  onDeletePatient,
 }: Props) {
   const [section, setSection] = useState<CaregiverSection>("patients");
   const [totalMemorias, setTotalMemorias] = useState<number | null>(null);
@@ -162,6 +164,7 @@ export function CaregiverDashboard({
                 onSelectPatient={onSelectPatient}
                 onAddPatient={onAddPatient}
                 onAccessPatient={onAccessPatient}
+                onDeletePatient={onDeletePatient}
               />
             </>
           )}

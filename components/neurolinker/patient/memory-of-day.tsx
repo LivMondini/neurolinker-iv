@@ -1,24 +1,17 @@
-"use client";
-
-import { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Play, Pause, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
   fotoUrl?: string | null;
   fotoLabel?: string;
-  audioUrl?: string | null;
   relato?: string | null;
+  ano?: number | null;
 };
 
-export function MemoryOfDay({ fotoUrl, fotoLabel, audioUrl, relato }: Props) {
-  const [playing, setPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
-
-  // Sem dados reais (preview do cuidador), mantém o conteúdo de exemplo
-  const usandoMock = !fotoUrl && !audioUrl && !relato;
+export function MemoryOfDay({ fotoUrl, fotoLabel, relato, ano }: Props) {
+  // Sem dados reais (preview com mock), mantém o conteúdo de exemplo
+  const usandoMock = !fotoUrl && !relato;
   const imagem =
     fotoUrl ?? (usandoMock ? "/images/memoria-historica.png" : null);
   const texto =
@@ -26,7 +19,7 @@ export function MemoryOfDay({ fotoUrl, fotoLabel, audioUrl, relato }: Props) {
     (usandoMock
       ? "Este é o dia do seu casamento com Maria, em 1975. Vocês escolheram uma pequena capela perto da casa dos seus pais para celebrar esse momento especial."
       : (fotoLabel ?? ""));
-  const audio = audioUrl ?? (usandoMock ? "/audio/memoria-do-dia.mp3" : null);
+  const anoExibido = ano ?? (usandoMock ? 1975 : null);
 
   return (
     <Card className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-md">
@@ -34,7 +27,7 @@ export function MemoryOfDay({ fotoUrl, fotoLabel, audioUrl, relato }: Props) {
         className={cn("grid grid-cols-1", imagem && "sm:grid-cols-[1fr_1.4fr]")}
       >
         {imagem && (
-          <div className="relative aspect-square sm:aspect-auto">
+          <div className="relative aspect-square sm:aspect-auto sm:min-h-72">
             <img
               src={imagem}
               alt={fotoLabel ?? "Foto da memória do dia"}
@@ -42,60 +35,31 @@ export function MemoryOfDay({ fotoUrl, fotoLabel, audioUrl, relato }: Props) {
             />
           </div>
         )}
-        <div className="flex flex-col gap-5 p-6 sm:p-8">
-          <div className="flex items-center gap-2 text-blue-700">
-            <Sparkles className="size-5" />
-            <span className="text-sm font-semibold uppercase tracking-wide">
-              Memória do Dia
+        <div className="flex flex-col justify-center gap-4 p-6 sm:p-8">
+          <div className="flex flex-wrap items-center gap-3 text-blue-700">
+            <span className="flex items-center gap-2">
+              <Sparkles className="size-5" />
+              <span className="text-sm font-semibold uppercase tracking-wide">
+                Memória do Dia
+              </span>
             </span>
+            {anoExibido && (
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-900">
+                {anoExibido}
+              </span>
+            )}
           </div>
-          <p className="text-xl font-medium leading-relaxed text-slate-800 sm:text-2xl">
-            {texto}
-          </p>
 
-          {audio && (
-            <>
-              <audio
-                ref={audioRef}
-                src={audio}
-                preload="none"
-                onEnded={() => setPlaying(false)}
-                className="sr-only"
-              />
-              <div className="flex items-center gap-4">
-                <Button
-                  size="lg"
-                  onClick={() => {
-                    if (playing) audioRef.current?.pause();
-                    else void audioRef.current?.play();
-                    setPlaying((p) => !p);
-                  }}
-                  className="h-14 gap-2 rounded-xl bg-blue-600 px-6 text-base font-semibold text-white hover:bg-blue-700"
-                >
-                  {playing ? (
-                    <Pause className="size-5" />
-                  ) : (
-                    <Play className="size-5" />
-                  )}
-                  {playing ? "Pausar áudio" : "Ouvir essa história"}
-                </Button>
-                <div className="flex h-8 items-end gap-0.5">
-                  {Array.from({ length: 16 }).map((_, i) => (
-                    <span
-                      key={i}
-                      className={cn(
-                        "w-1 rounded-full bg-blue-400 transition-all",
-                        playing ? "animate-pulse" : "opacity-40",
-                      )}
-                      style={{
-                        height: `${((i % 5) + 2) * 5}px`,
-                        animationDelay: `${i * 80}ms`,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </>
+          {fotoLabel && !usandoMock && (
+            <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+              {fotoLabel}
+            </h2>
+          )}
+
+          {texto && texto !== fotoLabel && (
+            <p className="text-xl font-medium leading-relaxed text-slate-800 sm:text-2xl">
+              {texto}
+            </p>
           )}
         </div>
       </div>

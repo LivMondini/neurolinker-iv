@@ -211,6 +211,7 @@ export function AppShell() {
             activePatient={activePatient}
             onSelectPatient={setActivePatientId}
             onAddPatient={handleAddPatient}
+            onDeletePatient={handleDeletePatient}
             onAccessPatient={(id) => {
               setActivePatientId(id);
               setBaulAtivo(null); // modo preview: sem dados reais do baú
