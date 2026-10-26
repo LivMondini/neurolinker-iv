@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { PatientProfile } from "./patient-profile";
 import {
   Table,
   TableBody,
@@ -104,7 +105,6 @@ function formatarData(valor: string): string {
     year: "numeric",
   });
 }
-
 interface Props {
   patients: PatientSummary[];
   activePatientId?: string;
@@ -178,6 +178,13 @@ export function PatientsTable({
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState("");
+
+  // Perfil do idoso (janela com ficha + Linha da Vida + memórias)
+  const [profileId, setProfileId] = useState<string | null>(null);
+  // Guarda localmente os pacientes editados, para a tabela atualizar na hora
+  const [edited, setEdited] = useState<Record<string, PatientSummary>>({});
+  const shown = patients.map((p) => edited[p.id] ?? p);
+  const profilePatient = shown.find((p) => p.id === profileId) ?? null;
 
   async function handleDelete() {
     if (!delTarget) return;
@@ -296,7 +303,7 @@ export function PatientsTable({
     }
   }
 
-  const filteredPatients = patients.filter((patient) => {
+  const filteredPatients = shown.filter((patient) => {
     const query = search.trim().toLowerCase();
     return (
       !query ||
@@ -436,7 +443,10 @@ export function PatientsTable({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onSelectPatient(patient.id)}
+                        onClick={() => {
+                          onSelectPatient(patient.id);
+                          setProfileId(patient.id);
+                        }}
                       >
                         Gerenciar
                       </Button>
@@ -495,6 +505,28 @@ export function PatientsTable({
           </Table>
         </div>
       </CardContent>
+
+      {/* Perfil do idoso */}
+      <Dialog
+        open={profilePatient !== null}
+        onOpenChange={(value) => !value && setProfileId(null)}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Perfil do paciente</DialogTitle>
+            <DialogDescription>
+              Dados, Linha da Vida e memórias cadastradas.
+            </DialogDescription>
+          </DialogHeader>
+          {profilePatient && (
+            <PatientProfile
+              key={profilePatient.id}
+              patient={profilePatient}
+              onUpdated={(p) => setEdited((cur) => ({ ...cur, [p.id]: p }))}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Cadastro */}
       <Dialog open={open} onOpenChange={(value) => !saving && setOpen(value)}>

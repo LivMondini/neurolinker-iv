@@ -569,3 +569,64 @@ export async function excluirPacienteCompleto(id: string): Promise<void> {
   });
   if (error) throw error;
 }
+
+// Edita os dados básicos do paciente (foto fica para depois).
+export async function updatePaciente(
+  pacienteId: string,
+  dados: { name: string; age: number; stage: string },
+): Promise<PacienteRow> {
+  const { data, error } = await supabase
+    .from("pacientes")
+    .update({
+      name: dados.name,
+      age: dados.age,
+      stage: stageToDb(dados.stage),
+    })
+    .eq("id", pacienteId)
+    .select(COLUNAS_PACIENTE)
+    .single();
+  if (error) throw error;
+  return data as PacienteRow;
+}
+
+// Exclui UMA memória e o arquivo dela no storage (se tiver).
+export async function deleteMemoria(memoriaId: string): Promise<void> {
+  const { data: mem, error: erroBusca } = await supabase
+    .from("memorias")
+    .select("media_path")
+    .eq("id", memoriaId)
+    .single();
+  if (erroBusca) throw erroBusca;
+
+  const { error } = await supabase
+    .from("memorias")
+    .delete()
+    .eq("id", memoriaId);
+  if (error) throw error;
+
+  if (mem?.media_path) {
+    try {
+      await supabase.storage.from("memorias").remove([mem.media_path]);
+    } catch {
+      // arquivo órfão no storage não deve travar a exclusão
+    }
+  }
+}
+// Edita título, relato e ano de uma memória (ano null = fica só no Baú).
+export async function updateMemoria(
+  memoriaId: string,
+  dados: { label: string; content: string | null; ano: number | null },
+) {
+  const { data, error } = await supabase
+    .from("memorias")
+    .update({
+      label: dados.label,
+      content: dados.content,
+      ano: dados.ano,
+    })
+    .eq("id", memoriaId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
