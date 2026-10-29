@@ -5,6 +5,9 @@ import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { supabase } from "@/lib/supabase"
+import { mapSupabaseAuthError } from "@/lib/utils"
+import { senhaValida } from "@/lib/validation/password"
+import { PasswordStrengthMeter } from "@/components/neurolinker/password-strength"
 
 // Tela mostrada quando o cuidador chega pelo link do e-mail de "Esqueci minha senha".
 export function ResetPasswordScreen({ onDone }: { onDone: () => void }) {
@@ -18,10 +21,12 @@ export function ResetPasswordScreen({ onDone }: { onDone: () => void }) {
     e.preventDefault()
     setErrorMessage("")
 
-    if (password.length < 8) {
-      setErrorMessage("A senha precisa ter pelo menos 8 caracteres.")
+    // 1. Valida se a senha cumpre os critérios de senha forte (mínimo de caracteres, maiúsculas, números e bloqueio de 12345678)
+    if (!senhaValida(password)) {
+      setErrorMessage("A nova senha não atende a todos os critérios de segurança.")
       return
     }
+
     if (password !== confirm) {
       setErrorMessage("As senhas não são iguais.")
       return
@@ -33,15 +38,8 @@ export function ResetPasswordScreen({ onDone }: { onDone: () => void }) {
       if (error) throw error
       onDone()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ""
-      console.error("Erro ao redefinir senha:", msg)
-      if (msg.includes("different from the old password")) {
-        setErrorMessage("A nova senha precisa ser diferente da anterior.")
-      } else if (msg.includes("Password should be at least")) {
-        setErrorMessage("A senha precisa ter pelo menos 8 caracteres.")
-      } else {
-        setErrorMessage("Não foi possível redefinir a senha. Peça um novo link e tente de novo.")
-      }
+      console.error("Erro ao redefinir senha:", err)
+      setErrorMessage(mapSupabaseAuthError(err))
     } finally {
       setLoading(false)
     }
@@ -51,7 +49,7 @@ export function ResetPasswordScreen({ onDone }: { onDone: () => void }) {
     <main className="flex min-h-[calc(100vh-56px)] items-center justify-center bg-slate-50 px-5 py-10">
       <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
         <h1 className="text-2xl font-semibold text-[#0f172a]">Crie uma nova senha</h1>
-        <p className="mt-2 text-muted-foreground">Escolha uma senha nova para a sua conta.</p>
+        <p className="mt-2 text-muted-foreground">Escolha uma senha forte para a sua conta.</p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <label className="text-sm font-medium">
@@ -64,7 +62,6 @@ export function ResetPasswordScreen({ onDone }: { onDone: () => void }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
               />
               <button
                 type="button"
@@ -76,6 +73,8 @@ export function ResetPasswordScreen({ onDone }: { onDone: () => void }) {
                 {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
+            {/* Medidor visual de força de senha */}
+            <PasswordStrengthMeter password={password} />
           </label>
 
           <label className="text-sm font-medium">
@@ -92,7 +91,11 @@ export function ResetPasswordScreen({ onDone }: { onDone: () => void }) {
 
           {errorMessage && <p className="text-sm font-medium text-red-600">{errorMessage}</p>}
 
-          <Button type="submit" disabled={loading} className="w-full bg-[#0284c7] hover:bg-[#0284c7]/90">
+          <Button
+            type="submit"
+            disabled={loading || !senhaValida(password) || password !== confirm}
+            className="w-full bg-[#0284c7] hover:bg-[#0284c7]/90"
+          >
             {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
             Salvar nova senha
           </Button>

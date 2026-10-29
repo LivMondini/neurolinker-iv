@@ -5,28 +5,18 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Brain, ShieldCheck, Lock, Eye, Stethoscope, Heart, ChevronRight, ArrowLeft, EyeOff, Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, normalizeEmail, mapSupabaseAuthError } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
+import { isValidEmailDomain } from "@/lib/validation/email"
+import { senhaValida } from "@/lib/validation/password"
+import { PasswordStrengthMeter } from "@/components/neurolinker/password-strength"
 
-// Mostra o botão "Continuar com o Google". Deixe false até configurar o provider
-// no Google Cloud e no Supabase (Authentication → Providers → Google).
 const LOGIN_COM_GOOGLE = false
 
 interface LoginScreenProps {
-  // Agora usado de verdade: leva para a tela de acesso do paciente
-  // (pareamento do aparelho + PIN), sem depender de login do cuidador.
   onSelectPatient?: () => void
 }
 type AuthMode = "login" | "signup" | "forgot"
-
-function traduzirErro(msg: string) {
-  if (msg.includes("Invalid login credentials")) return "E-mail ou senha incorretos."
-  if (msg.includes("Email not confirmed")) return "Confirme seu e-mail antes de entrar."
-  if (msg.includes("User already registered")) return "Este e-mail já está cadastrado."
-  if (msg.toLowerCase().includes("rate limit")) return "Muitas tentativas. Aguarde um pouco."
-  if (msg.includes("Password should be at least")) return "A senha precisa ter pelo menos 8 caracteres."
-  return "Ocorreu um erro. Tente novamente."
-}
 
 export function LoginScreen(props: LoginScreenProps) {
   const [mode, setMode] = useState<AuthMode>("login")
@@ -143,18 +133,36 @@ function CaregiverAuth({
   function switchMode(newMode: AuthMode) {
     setErrorMessage("")
     setInfoMessage("")
+    setPassword("")
     setMode(newMode)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setErrorMessage("")
     setInfoMessage("")
 
+    const emailNorm = normalizeEmail(email)
+
+    // Validações exclusivas do Cadastro
+    if (mode === "signup") {
+      const emailDomainCheck = isValidEmailDomain(emailNorm)
+      if (!emailDomainCheck.isValid) {
+        setErrorMessage(emailDomainCheck.message ?? "Domínio de e-mail inválido.")
+        return // Bloqueia o envio se o e-mail for inválido (ex: @ail.com)
+      }
+
+      if (!senhaValida(password)) {
+        setErrorMessage("A senha não atende a todos os critérios de segurança (ex: evite 12345678).")
+        return // Bloqueia o envio se a senha for fraca
+      }
+    }
+
+    setLoading(true)
+
     try {
       if (mode === "forgot") {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabase.auth.resetPasswordForEmail(emailNorm, {
           redirectTo: `${window.location.origin}/`,
         })
         if (error) throw error
@@ -163,28 +171,39 @@ function CaregiverAuth({
       }
 
       if (mode === "signup") {
+        // Validação adicional na API
+        const resp = await fetch("/api/validar-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailNorm }),
+        })
+
+        if (!resp.ok) {
+          const d = await resp.json().catch(() => ({}))
+          setErrorMessage(d.erro ?? "Domínio de e-mail inválido.")
+          setLoading(false)
+          return
+        }
+
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: emailNorm,
           password,
           options: { data: { full_name: fullName } },
         })
         if (error) throw error
 
-        // Se veio sessão, o AppShell navega sozinho pelo evento SIGNED_IN.
         if (!data.session) {
-          switchMode("login") // primeiro troca o modo (isso limpa as mensagens)...
-          setInfoMessage("Conta criada! Se pedirmos confirmação, verifique seu e-mail antes de entrar.") // ...depois mostra a mensagem
-          setPassword("")
+          switchMode("login")
+          setInfoMessage("Conta criada! Se pedirmos confirmação, verifique seu e-mail antes de entrar.")
         }
         return
       }
 
-      // Login: o AppShell navega sozinho pelo evento SIGNED_IN.
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      // Login convencional
+      const { error } = await supabase.auth.signInWithPassword({ email: emailNorm, password })
       if (error) throw error
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : ""
-      setErrorMessage(traduzirErro(msg))
+    } catch (err: any) {
+      setErrorMessage(mapSupabaseAuthError(err))
     } finally {
       setLoading(false)
     }
@@ -199,9 +218,8 @@ function CaregiverAuth({
         options: { redirectTo: `${window.location.origin}/` },
       })
       if (error) throw error
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : ""
-      setErrorMessage(traduzirErro(msg))
+    } catch (err: any) {
+      setErrorMessage(mapSupabaseAuthError(err))
       setLoading(false)
     }
   }
@@ -254,7 +272,6 @@ function CaregiverAuth({
                   <Input
                     type={showPassword ? "text" : "password"}
                     required
-                    minLength={mode === "signup" ? 8 : undefined}
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     className="pr-10"
                     value={password}
@@ -270,6 +287,8 @@ function CaregiverAuth({
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 </div>
+                {/* Exibe o medidor de força no cadastro */}
+                {mode === "signup" && <PasswordStrengthMeter password={password} />}
               </label>
             )}
 
@@ -286,7 +305,11 @@ function CaregiverAuth({
             {errorMessage && <p className="text-sm font-medium text-red-600">{errorMessage}</p>}
             {infoMessage && <p className="text-sm font-medium text-emerald-600">{infoMessage}</p>}
 
-            <Button type="submit" disabled={loading} className="w-full bg-[#0284c7] hover:bg-[#0284c7]/90">
+            <Button
+              type="submit"
+              disabled={loading || (mode === "signup" && !senhaValida(password))}
+              className="w-full bg-[#0284c7] hover:bg-[#0284c7]/90"
+            >
               {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
               {mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar instruções"}
             </Button>
