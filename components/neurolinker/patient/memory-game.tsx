@@ -14,9 +14,10 @@ type Props = {
     correctAnswer: boolean;
     category?: string;
   }[];
+  onFinish?: (acertos: number, total: number) => void; // <- NOVO
 };
 
-export function MemoryGame({ perguntas }: Props) {
+export function MemoryGame({ perguntas, onFinish }: Props) {
   const questions = perguntas ?? trueFalseQuestions;
   const [index, setIndex] = useState(0);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
@@ -45,6 +46,9 @@ export function MemoryGame({ perguntas }: Props) {
         setFeedback(null);
       } else {
         setFinished(true);
+        if (onFinish) {
+          onFinish?.(score + (correct ? 1 : 0), questions.length);
+        }
       }
     }, 1200);
   }

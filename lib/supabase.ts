@@ -328,6 +328,7 @@ export async function pacienteEntrar(
 
   if (data.ok) {
     salvarTokenSessao(data.session_token);
+    void registrarAtividade("entrou");
     return { ok: true, sessionToken: data.session_token };
   }
 
@@ -398,7 +399,26 @@ export async function pacienteSair(): Promise<void> {
   }
   limparTokenSessao();
 }
+export type TipoAtividade = "entrou" | "abriu_baul" | "memoria_do_dia" | "jogo";
 
+// Registra atividade do paciente. Nunca lança erro e nunca bloqueia a tela:
+// se falhar, só não registra. Sem token de sessão (ex.: preview do cuidador), não faz nada.
+export async function registrarAtividade(
+  tipo: TipoAtividade,
+  detalhe: Record<string, unknown> = {},
+): Promise<void> {
+  const sessionToken = obterTokenSessao();
+  if (!sessionToken) return;
+  try {
+    await supabase.rpc("paciente_registrar_atividade", {
+      p_session_token: sessionToken,
+      p_tipo: tipo,
+      p_detalhe: detalhe,
+    });
+  } catch {
+    // atividade não registrada não pode atrapalhar o idoso
+  }
+}
 // ---------------------------------------------------------------------------
 // Memórias (fotos, áudios, relatos de vida)
 // media_path é o caminho dentro de um bucket PRIVADO do Storage — nunca uma
@@ -629,4 +649,104 @@ export async function updateMemoria(
     .single();
   if (error) throw error;
   return data;
+}
+export type EventoAtividade = {
+  id: string;
+  tipo: TipoAtividade;
+  detalhe: Record<string, unknown> | null;
+  created_at: string;
+};
+
+// Eventos do paciente nos últimos N dias (a RLS filtra pelo cuidador logado).
+export async function fetchEventosAtividade(
+  pacienteId: string,
+  dias = 30,
+): Promise<EventoAtividade[]> {
+  const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("eventos_atividade")
+    .select("id, tipo, detalhe, created_at")
+    .eq("paciente_id", pacienteId)
+    .gte("created_at", desde)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return data as EventoAtividade[];
+}
+export type ResumoAtividade = {
+  ultima: string | null; // ISO do evento mais recente (últimos 30 dias)
+  diasAtivos7: number;
+  score: number | null; // 0 a 100; null = sem dados
+  nivel: EngagementLevel | null;
+};
+
+const TZ_SP = "America/Sao_Paulo";
+const chaveDiaSP = (d: Date) =>
+  d.toLocaleDateString("en-CA", { timeZone: TZ_SP });
+
+// Um resumo por paciente do cuidador logado (a RLS filtra). Janela: 30 dias.
+export async function fetchResumoAtividade(): Promise<
+  Record<string, ResumoAtividade>
+> {
+  const desde = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("eventos_atividade")
+    .select("paciente_id, created_at")
+    .gte("created_at", desde)
+    .order("created_at", { ascending: false })
+    .limit(5000);
+  if (error) throw error;
+
+  const ultimos7 = new Set(
+    Array.from({ length: 7 }, (_, i) =>
+      chaveDiaSP(new Date(Date.now() - i * 24 * 60 * 60 * 1000)),
+    ),
+  );
+
+  const mapa: Record<string, ResumoAtividade> = {};
+  const dias: Record<string, Set<string>> = {};
+  const primeiro: Record<string, string> = {};
+  const MS_DIA = 24 * 60 * 60 * 1000;
+  const hojeK = chaveDiaSP(new Date());
+
+  for (const e of (data ?? []) as {
+    paciente_id: string;
+    created_at: string;
+  }[]) {
+    if (!mapa[e.paciente_id]) {
+      mapa[e.paciente_id] = {
+        ultima: e.created_at, // vem ordenado, o primeiro é o mais recente
+        diasAtivos7: 0,
+        score: 0,
+        nivel: "Baixo",
+      };
+      dias[e.paciente_id] = new Set();
+    }
+    // vem do mais novo para o mais antigo: o último valor gravado é o primeiro acesso
+    primeiro[e.paciente_id] = e.created_at;
+    const k = chaveDiaSP(new Date(e.created_at));
+    if (ultimos7.has(k)) dias[e.paciente_id].add(k);
+  }
+
+  for (const id of Object.keys(mapa)) {
+    const n = dias[id].size;
+    const entrouHoje = dias[id].has(hojeK);
+    // dias desde o primeiro acesso (contando hoje)
+    const diasDesdePrimeiro =
+      Math.round(
+        (Date.parse(hojeK) - Date.parse(chaveDiaSP(new Date(primeiro[id])))) /
+          MS_DIA,
+      ) + 1;
+    // hoje só conta como falta depois que o dia acabou (se ainda não entrou, fica de fora)
+    const janela = Math.min(
+      7,
+      Math.max(1, diasDesdePrimeiro - (entrouHoje ? 0 : 1)),
+    );
+    const score = Math.min(100, Math.round((n / janela) * 100));
+
+    mapa[id].diasAtivos7 = n;
+    mapa[id].score = score;
+    mapa[id].nivel = score >= 70 ? "Alto" : score >= 40 ? "Médio" : "Baixo";
+  }
+  return mapa;
 }

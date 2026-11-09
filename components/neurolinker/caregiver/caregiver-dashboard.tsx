@@ -9,7 +9,12 @@ import { PatientReports } from "./patient-reports";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Activity, Image as ImageIcon, HelpCircle } from "lucide-react";
 import type { PatientSummary } from "@/lib/neurolinker-data";
-import { contarMemorias, contarPerguntasJogo } from "@/lib/supabase";
+import {
+  contarMemorias,
+  contarPerguntasJogo,
+  fetchResumoAtividade,
+  type ResumoAtividade,
+} from "@/lib/supabase";
 
 interface Props {
   patients: PatientSummary[];
@@ -52,6 +57,9 @@ export function CaregiverDashboard({
   const [totalMemorias, setTotalMemorias] = useState<number | null>(null);
   const [totalPerguntas, setTotalPerguntas] = useState<number | null>(null);
   const active = activePatient ?? patients[0];
+  const [atividade, setAtividade] = useState<
+    Record<string, ResumoAtividade> | undefined
+  >(undefined);
 
   // Recarrega os totais ao voltar para a visão geral (depois de cadastrar memórias/perguntas
   // nas outras abas) e quando a lista de pacientes muda.
@@ -75,14 +83,25 @@ export function CaregiverDashboard({
       cancelado = true;
     };
   }, [section, patients.length]);
-
-  const engajamentoMedio = patients.length
-    ? Math.round(
-        patients.reduce((acc, p) => acc + p.engagementScore, 0) /
-          patients.length,
-      )
-    : 0;
-
+  useEffect(() => {
+    if (section !== "patients") return;
+    let cancelado = false;
+    fetchResumoAtividade()
+      .then((r) => !cancelado && setAtividade(r))
+      .catch((err) => {
+        console.error(err);
+        if (!cancelado) setAtividade({});
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [section, patients.length]);
+  const scores = patients
+    .map((p) => atividade?.[p.id]?.score)
+    .filter((s): s is number => typeof s === "number");
+  const engajamentoMedio = scores.length
+    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+    : null;
   const stats = [
     {
       label: "Pacientes ativos",
@@ -91,7 +110,7 @@ export function CaregiverDashboard({
     },
     {
       label: "Engajamento médio",
-      value: `${engajamentoMedio}%`,
+      value: engajamentoMedio === null ? "—" : `${engajamentoMedio}%`,
       icon: Activity,
     },
     {
@@ -159,12 +178,15 @@ export function CaregiverDashboard({
                 ))}
               </div>
               <PatientsTable
-                patients={patients}
-                activePatientId={active?.id}
-                onSelectPatient={onSelectPatient}
-                onAddPatient={onAddPatient}
-                onAccessPatient={onAccessPatient}
-                onDeletePatient={onDeletePatient}
+                {...({
+                  atividade,
+                  patients,
+                  activePatientId: active?.id,
+                  onSelectPatient,
+                  onAddPatient,
+                  onAccessPatient,
+                  onDeletePatient,
+                } as any)}
               />
             </>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Heart, Images } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import type { PatientSummary } from "@/lib/neurolinker-data";
@@ -9,6 +9,7 @@ import {
   fetchMemorias,
   fetchPerguntasJogo,
   obterUrlAssinada,
+  registrarAtividade,
 } from "@/lib/supabase";
 import { MemoryOfDay } from "./memory-of-day";
 import { WhoIsWho } from "./who-is-who";
@@ -106,6 +107,21 @@ export function PatientChest({
     () => (dados?.memorias ?? []).filter((m) => m.type === "photo" && m.url),
     [dados],
   );
+  // Só registra no acesso REAL do paciente (baul), nunca no preview do cuidador.
+  const registrouBaul = useRef(false);
+  const registrouMemoriaDia = useRef(false);
+
+  useEffect(() => {
+    if (!baul || registrouBaul.current) return;
+    registrouBaul.current = true;
+    void registrarAtividade("abriu_baul");
+  }, [baul]);
+
+  useEffect(() => {
+    if (!baul || !memoriaDoDia || registrouMemoriaDia.current) return;
+    registrouMemoriaDia.current = true;
+    void registrarAtividade("memoria_do_dia", { id: memoriaDoDia.id });
+  }, [baul, memoriaDoDia]);
 
   return (
     <div className="min-h-[calc(100vh-56px)] bg-slate-50">
@@ -202,6 +218,12 @@ export function PatientChest({
                   correctAnswer: p.correct_answer,
                   category: p.category,
                 }))
+              : undefined
+          }
+          onFinish={
+            baul
+              ? (acertos, total) =>
+                  void registrarAtividade("jogo", { acertos, total })
               : undefined
           }
         />

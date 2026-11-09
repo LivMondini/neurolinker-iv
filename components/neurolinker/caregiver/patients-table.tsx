@@ -53,6 +53,7 @@ import {
   revogarDispositivo,
   rowToPatient,
   type DispositivoRow,
+  type ResumoAtividade,
 } from "@/lib/supabase";
 
 const engagementClassName: Record<EngagementLevel, string> = {
@@ -106,6 +107,7 @@ function formatarData(valor: string): string {
   });
 }
 interface Props {
+  atividade?: Record<string, ResumoAtividade>;
   patients: PatientSummary[];
   activePatientId?: string;
   onSelectPatient: (id: string) => void;
@@ -116,6 +118,7 @@ interface Props {
 }
 
 export function PatientsTable({
+  atividade,
   patients,
   activePatientId,
   onSelectPatient,
@@ -407,23 +410,37 @@ export function PatientsTable({
                     {patient.stage}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatarUltimaAtividade(patient.lastActivity)}
+                    {atividade === undefined
+                      ? "—"
+                      : atividade[patient.id]?.ultima
+                        ? formatarUltimaAtividade(atividade[patient.id].ultima)
+                        : "Sem atividade recente"}
                   </TableCell>
                   <TableCell>
-                    <div className="flex min-w-24 items-center gap-2">
-                      <Progress
-                        value={patient.engagementScore}
-                        className="h-2"
-                      />
-                      <span className="text-xs font-medium">
-                        {patient.engagementScore}%
+                    {atividade === undefined ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : !atividade[patient.id] ? (
+                      <span className="text-xs text-muted-foreground">
+                        Sem dados ainda
                       </span>
-                    </div>
-                    <Badge
-                      className={`mt-1 text-[10px] ${engagementClassName[patient.engagement]}`}
-                    >
-                      {patient.engagement}
-                    </Badge>
+                    ) : (
+                      <>
+                        <div className="flex min-w-24 items-center gap-2">
+                          <Progress
+                            value={atividade[patient.id].score ?? 0}
+                            className="h-2"
+                          />
+                          <span className="text-xs font-medium">
+                            {atividade[patient.id].score}%
+                          </span>
+                        </div>
+                        <Badge
+                          className={`mt-1 text-[10px] ${engagementClassName[atividade[patient.id].nivel ?? "Baixo"]}`}
+                        >
+                          {atividade[patient.id].nivel}
+                        </Badge>
+                      </>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -522,6 +539,7 @@ export function PatientsTable({
             <PatientProfile
               key={profilePatient.id}
               patient={profilePatient}
+              resumo={atividade?.[profilePatient.id]}
               onUpdated={(p) => setEdited((cur) => ({ ...cur, [p.id]: p }))}
             />
           )}

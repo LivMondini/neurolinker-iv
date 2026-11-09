@@ -22,15 +22,18 @@ import {
   deleteMemoria,
   updateMemoria,
   rowToPatient,
+  ResumoAtividade,
 } from "@/lib/supabase";
 
 type MemoriaItem = TimelineMemoria & { media_path?: string | null };
 
 export function PatientProfile({
   patient,
+  resumo,
   onUpdated,
 }: {
   patient: PatientSummary;
+  resumo?: ResumoAtividade;
   onUpdated: (p: PatientSummary) => void;
 }) {
   const [memorias, setMemorias] = useState<MemoriaItem[]>([]);
@@ -208,8 +211,9 @@ export function PatientProfile({
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Badge variant="outline">{patient.status}</Badge>
                   <Badge variant="outline">
-                    Engajamento: {patient.engagement} ({patient.engagementScore}
-                    %)
+                    {resumo
+                      ? `Engajamento: ${resumo.nivel} (${resumo.score}%)`
+                      : "Engajamento: sem dados ainda"}
                   </Badge>
                 </div>
               </div>
