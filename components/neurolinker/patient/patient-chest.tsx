@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Heart, Images } from "lucide-react";
+import { ArrowLeft, Images } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { PatientSummary } from "@/lib/neurolinker-data";
 import {
   type BaulData,
@@ -94,10 +95,13 @@ export function PatientChest({
 
   const nome = baul?.paciente.name ?? patient?.name;
   const firstName = nome?.split(" ")[0] ?? "Seu João";
-  const avatarUrl =
-    baul?.paciente.avatar_url ||
-    patient?.avatarUrl ||
-    "/images/seu-joao-avatar.png";
+  const avatarUrl = baul?.paciente.avatar_url || patient?.avatarUrl || "";
+  const iniciais = (nome ?? "Seu João")
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   const memoriaDoDia = useMemo(
     () => (dados ? escolherMemoriaDoDia(dados.memorias) : null),
@@ -138,16 +142,19 @@ export function PatientChest({
         )}
 
         <header className="flex items-center gap-4">
-          <img
-            src={avatarUrl}
-            alt={`Foto de ${nome ?? "Seu João"}`}
-            className="size-20 rounded-full border-4 border-white object-cover shadow-md sm:size-24"
-          />
+          <Avatar className="size-20 border-4 border-white shadow-md sm:size-24">
+            {avatarUrl && (
+              <AvatarImage
+                src={avatarUrl}
+                alt={`Foto de ${nome ?? "Seu João"}`}
+              />
+            )}
+            <AvatarFallback className="bg-sky-100 text-2xl font-semibold text-sky-700">
+              {iniciais}
+            </AvatarFallback>
+          </Avatar>
           <div>
-            <p className="flex items-center gap-2 text-lg font-semibold text-slate-700">
-              <Heart className="size-5 fill-amber-500 text-amber-500" />
-              {saudacao()}
-            </p>
+            <p className="text-lg font-semibold text-slate-700">{saudacao()}</p>
             <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">
               Olá, {firstName}!
             </h1>

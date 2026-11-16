@@ -42,7 +42,14 @@ import {
   Link2,
   Smartphone,
   Trash2,
+  MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { EngagementLevel, PatientSummary } from "@/lib/neurolinker-data";
 import {
   addPaciente,
@@ -456,7 +463,7 @@ export function PatientsTable({
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap justify-end gap-2">
+                    <div className="flex flex-nowrap items-center justify-end gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -499,21 +506,32 @@ export function PatientsTable({
                         <ExternalLink data-icon="inline-start" />
                         Acessar conta
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-red-200 text-red-700 hover:bg-red-50"
-                        onClick={() => {
-                          setDelError("");
-                          setDelTarget({
-                            id: patient.id,
-                            name: patient.name,
-                          });
-                        }}
-                      >
-                        <Trash2 data-icon="inline-start" />
-                        Excluir
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            aria-label={`Mais ações para ${patient.name}`}
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-red-700 focus:bg-red-50 focus:text-red-700"
+                            onClick={() => {
+                              setDelError("");
+                              setDelTarget({
+                                id: patient.id,
+                                name: patient.name,
+                              });
+                            }}
+                          >
+                            <Trash2 className="mr-2 size-4" />
+                            Excluir paciente
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -769,25 +787,17 @@ export function PatientsTable({
                       </Badge>
                     ) : confirmRevokeId === d.id ? (
                       <div className="flex shrink-0 gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={revokingId === d.id}
-                          onClick={() => setConfirmRevokeId(null)}
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              aria-label={`Mais ações para ${devTarget?.name ?? "este paciente"}`}
+                            />
+                          }
                         >
-                          Cancelar
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={revokingId === d.id}
-                          onClick={() => handleRevoke(d.id)}
-                          className="bg-red-600 hover:bg-red-600/90"
-                        >
-                          {revokingId === d.id && (
-                            <Loader2 className="mr-2 size-4 animate-spin" />
-                          )}
-                          Confirmar
-                        </Button>
+                          <MoreHorizontal className="size-4" />
+                        </DropdownMenuTrigger>
                       </div>
                     ) : (
                       <Button
